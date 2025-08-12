@@ -1,103 +1,141 @@
-import Image from "next/image";
+import Image from "next/image"
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <main className="min-h-dvh bg-[#0b0d12] text-primary font-sans">
+      <section className="mx-auto max-w-7xl px-6 py-20 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+        <div>
+          <span className="inline-block text-xs tracking-widest uppercase text-white/70">
+            Califica a tus profesores
+          </span>
+          <h1 className="mt-4 text-5xl md:text-7xl leading-tight font-medium">
+            Encuentra, califica
+            <br />y comparte tu experiencia
+          </h1>
+          <p className="mt-6 text-white/80 max-w-prose">
+            Shifu es la forma más rápida de conocer la reputación académica:
+            busca profesores, revisa opiniones reales y contribuye con tus
+            calificaciones para ayudar a otros estudiantes.
+          </p>
+          <div className="mt-8 flex items-center gap-4">
+            <a
+              href="/calificar"
+              className="inline-flex items-center rounded-full bg-primary text-[#0b0d12] px-6 py-3 text-sm font-medium shadow-[0_0_0_2px_#0b0d12_inset] hover:opacity-90 transition"
+            >
+              Calificar ahora
+            </a>
+            <a
+              href="/ranking"
+              className="inline-flex items-center rounded-full border border-white/20 text-white px-6 py-3 text-sm font-medium hover:bg-white/5 transition"
+            >
+              Ver ranking
+            </a>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
+
+        <div className="relative aspect-[4/3] md:aspect-[5/4] rounded-3xl overflow-hidden border border-white/10 bg-[#121621]">
+          <img
             src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+            alt="Shifu hero visual"
+            className="absolute inset-0 m-auto w-3/4 opacity-90"
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+          <div className="absolute inset-0 pointer-events-none ring-1 ring-white/10 rounded-3xl" />
+        </div>
+      </section>
+
+      {/* Feature cards */}
+      <section className="mx-auto max-w-7xl px-6 py-16 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="rounded-2xl border border-white/10 bg-[#121621] p-6 hover:border-white/20 transition">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-lg bg-[#0b0d12] grid place-items-center border border-white/10">
+              <Image src="/globe.svg" alt="Buscar" width={20} height={20} />
+            </div>
+            <h3 className="text-lg font-medium">Busca profesores</h3>
+          </div>
+          <p className="mt-3 text-white/70">
+            Encuentra docentes por nombre, universidad o departamento con
+            filtros precisos.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#121621] p-6 hover:border-white/20 transition">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-lg bg-[#0b0d12] grid place-items-center border border-white/10">
+              <Image src="/window.svg" alt="Comparar" width={20} height={20} />
+            </div>
+            <h3 className="text-lg font-medium">Compara y decide</h3>
+          </div>
+          <p className="mt-3 text-white/70">
+            Revisa opiniones reales y compara métricas clave antes de
+            inscribirte.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#121621] p-6 hover:border-white/20 transition">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-lg bg-[#0b0d12] grid place-items-center border border-white/10">
+              <Image src="/file.svg" alt="Calificar" width={20} height={20} />
+            </div>
+            <h3 className="text-lg font-medium">Califica con impacto</h3>
+          </div>
+          <p className="mt-3 text-white/70">
+            Comparte tu experiencia y mejora la calidad docente de tu comunidad.
+          </p>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <h2 className="text-2xl md:text-3xl font-medium">Cómo funciona</h2>
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+          {["Busca y descubre", "Compara y elige", "Califica y comparte"].map(
+            (title, idx) => (
+              <div
+                key={title}
+                className="rounded-2xl border border-white/10 bg-[#121621] p-6"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="size-8 rounded-full bg-primary/20 text-primary grid place-items-center text-sm border border-white/10">
+                    {idx + 1}
+                  </div>
+                  <div className="font-medium">{title}</div>
+                </div>
+                <p className="mt-3 text-white/70">
+                  {idx === 0 &&
+                    "Filtra por universidad, departamento o nombre y accede a perfiles completos."}
+                  {idx === 1 &&
+                    "Revisa calificaciones, comentarios y tendencias para tomar la mejor decisión."}
+                  {idx === 2 &&
+                    "Deja tu reseña con criterios claros y ayuda a futuros estudiantes."}
+                </p>
+              </div>
+            )
+          )}
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <div className="rounded-3xl border border-white/10 bg-[#121621] p-8 md:p-12 text-center">
+          <h3 className="text-2xl md:text-3xl font-medium">
+            ¿Listo para ayudar a tu comunidad?
+          </h3>
+          <p className="mt-3 text-white/70 max-w-2xl mx-auto">
+            Califica a tus profesores y mejora la transparencia académica. Tu
+            opinión cuenta.
+          </p>
+          <div className="mt-6">
+            <a
+              href="/calificar"
+              className="inline-flex items-center rounded-full bg-primary text-[#0b0d12] px-6 py-3 text-sm font-medium shadow-[0_0_0_2px_#0b0d12_inset] hover:opacity-90 transition"
+            >
+              Comenzar a calificar
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <div className="py-10 text-center text-xs text-white/50">
+        curated by Shifu
+      </div>
+    </main>
+  )
 }
