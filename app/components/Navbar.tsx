@@ -126,6 +126,12 @@ export function Navbar() {
           >
             Ingresar
           </Link>
+          <Link
+            href="/register"
+            className="rounded-full bg-primary text-[#0b0d12] px-4 py-2 text-sm font-medium hover:opacity-90 transition"
+          >
+            Registrarse
+          </Link>
         </div>
       </div>
 

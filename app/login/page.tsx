@@ -112,7 +112,7 @@ export default function LoginPage() {
           <div className="mt-6 text-xs text-white/60">
             ¿No tienes cuenta?{" "}
             <Link
-              href="#"
+              href="/register"
               className="text-white/80 hover:text-white underline underline-offset-4"
             >
               Regístrate
