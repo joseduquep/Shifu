@@ -5,7 +5,6 @@ import { useCallback, useRef, useState } from "react"
 
 type MenuKey =
   | "explorar"
-  | "profesores"
   | "calificar"
   | "ranking"
   | "acerca"
@@ -62,19 +61,6 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* Profesores */}
-          <div
-            className="relative"
-            onMouseEnter={() => open("profesores")}
-            onMouseLeave={scheduleClose}
-          >
-            <Link
-              href="/profesores"
-              className="text-white/80 hover:text-white transition"
-            >
-              Profesores
-            </Link>
-          </div>
 
           {/* Calificar */}
           <div
@@ -218,80 +204,6 @@ export function Navbar() {
         </div>
       </div>
 
-      <div
-        className={`${panelBase} ${
-          active === "profesores" ? panelVisible : panelHidden
-        }`}
-        onMouseEnter={clearCloseTimer}
-        onMouseLeave={scheduleClose}
-      >
-        <div className="border border-white/10 bg-[#10141d] shadow-2xl">
-          <div className="mx-auto max-w-7xl grid grid-cols-2 md:grid-cols-4 gap-8 p-8">
-            <div>
-              <div className="text-xs uppercase tracking-widest text-white/60">
-                Filtrar
-              </div>
-              <ul className="mt-3 space-y-2 text-white">
-                <li>
-                  <Link
-                    href="/profesores?dep=matematicas"
-                    className="hover:underline"
-                  >
-                    Matemáticas
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/profesores?dep=ingenieria"
-                    className="hover:underline"
-                  >
-                    Ingeniería
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/profesores?dep=humanidades"
-                    className="hover:underline"
-                  >
-                    Humanidades
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-widest text-white/60">
-                Accesos
-              </div>
-              <ul className="mt-3 space-y-2 text-white">
-                <li>
-                  <Link href="/profesores" className="hover:underline">
-                    Todos
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/ranking" className="hover:underline">
-                    Mejor valorados
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/nuevos" className="hover:underline">
-                    Agregados recientemente
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div className="col-span-2 hidden md:block">
-              <div className="text-xs uppercase tracking-widest text-white/60">
-                Destacado
-              </div>
-              <div className="mt-3 rounded-xl border border-white/10 bg-[#0b0d12] p-6 text-white/80">
-                Descubre docentes con impacto positivo en su comunidad
-                académica.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div
         className={`${panelBase} ${

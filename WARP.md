@@ -78,3 +78,17 @@ Registration form demonstrates comprehensive validation patterns that should be 
 - Real-time validation feedback
 - Password strength requirements
 - Accessible form controls with proper labeling
+
+## Assistant and Coding Rules
+This repository adheres to the “NextJS Rules” and related conventions described in <rule:u7sPdw7zeRSTaCsRyGOHWb> (Name: NextJS Rules, Type: AI Rule). Future Warp instances must follow these rules when proposing or applying changes. Project-specific conventions in this WARP.md take precedence in case of conflict.
+
+Key points to observe from the rule:
+- Planning and implementation: plan step-by-step, write brief pseudocode for complex changes, and consider edge cases.
+- Code style: tabs for indentation, single quotes, omit semicolons unless required, strict equality (===), trailing commas in multiline literals, kebab-case filenames, PascalCase components and interfaces, camelCase variables/functions/hooks.
+- React/Next.js: functional components, prefer Server Components by default; use 'use client' only when needed (event handlers, browser APIs, stateful UI); use Next.js components (Image, Link) and proper loading states and error boundaries.
+- Performance: prefer useCallback/useMemo appropriately; avoid using array index as key; use dynamic imports for code splitting as needed.
+- TypeScript: strict mode, clear interfaces for props/state, use guards and utility types (Partial, Pick, Omit), prefer interface over type when extending.
+- Styling: TailwindCSS utility-first approach; maintain dark theme variables and consistent spacing; ensure accessible color contrast.
+- Testing: prefer Jest + React Testing Library patterns; mock external calls.
+
+Reference: see inline rule content ID u7sPdw7zeRSTaCsRyGOHWb for the full list of practices to follow.
