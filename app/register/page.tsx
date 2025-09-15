@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+
+type Role = 'student' | 'professor'
 
 type StudentForm = {
   firstName: string
@@ -12,6 +16,7 @@ type StudentForm = {
   birthDate: string
   password: string
   confirmPassword: string
+  role: Role
 }
 
 const SPECIALS_SAFE = "!@#$%^&*_.-"
@@ -74,6 +79,9 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [error, setError] = useState("")
+  const router = useRouter()
+  const supabase = createClient()
   const [form, setForm] = useState<StudentForm>({
     firstName: "",
     lastName: "",
@@ -83,6 +91,7 @@ export default function RegisterPage() {
     birthDate: "",
     password: "",
     confirmPassword: "",
+    role: 'student',
   })
 
   useEffect(() => setMounted(true), [])
@@ -94,11 +103,14 @@ export default function RegisterPage() {
   const passwordsMatch =
     form.password.length > 0 && form.password === form.confirmPassword
 
+  const emailValid = /.+@.+\..+/.test(form.email)
+  const isStudent = form.role === 'student'
+
   const allValid =
     Boolean(form.firstName.trim()) &&
     Boolean(form.lastName.trim()) &&
-    /.+@.+\..+/.test(form.email) &&
-    Boolean(form.epikId.trim()) &&
+    emailValid &&
+    (!isStudent || Boolean(form.epikId.trim())) &&
     Boolean(form.phone.trim()) &&
     Boolean(form.birthDate) &&
     checks.hasUppercase &&
@@ -111,11 +123,34 @@ export default function RegisterPage() {
     e.preventDefault()
     if (!allValid) return
     setIsLoading(true)
+    setError("")
     try {
-      // TODO: integrar API de registro
-      await new Promise((r) => setTimeout(r, 800))
-      console.log({ ...form, password: "[hidden]" })
-      alert("Registro enviado. (Simulado)")
+      const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim()
+      const metadata: Record<string, any> = {
+        full_name: fullName,
+        role: form.role,
+      }
+      if (isStudent) metadata.epik_id = form.epikId
+
+      const { data, error } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: metadata },
+      })
+      if (error) throw error
+
+      // Si la sesión no se crea (confirmación de email activada), enviamos a login
+      const role = (data.user as any)?.user_metadata?.role || form.role
+      const target = role === 'professor' ? '/profesores/dashboard' : '/dashboard'
+
+      if (data.session) {
+        router.push(target)
+      } else {
+        router.push('/login?registered=1')
+      }
+      router.refresh()
+    } catch (err: any) {
+      setError(err?.message || 'Error al registrarse')
     } finally {
       setIsLoading(false)
     }
@@ -139,6 +174,30 @@ export default function RegisterPage() {
             className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4"
             onSubmit={handleSubmit}
           >
+            {error && (
+              <div className="md:col-span-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-sm px-3 py-2">
+                {error}
+              </div>
+            )}
+            <div className="md:col-span-2 flex items-center gap-4">
+              <label className="text-sm text-white/80">Tipo de cuenta</label>
+              <div className="inline-flex rounded-full border border-white/15 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => update('role', 'student')}
+                  className={`px-4 py-2 text-sm ${form.role === 'student' ? 'bg-primary text-[#0b0d12]' : 'text-white/80 hover:text-white'}`}
+                >
+                  Estudiante
+                </button>
+                <button
+                  type="button"
+                  onClick={() => update('role', 'professor')}
+                  className={`px-4 py-2 text-sm ${form.role === 'professor' ? 'bg-primary text-[#0b0d12]' : 'text-white/80 hover:text-white'}`}
+                >
+                  Profesor
+                </button>
+              </div>
+            </div>
             <input
               id="firstName"
               type="text"
@@ -170,15 +229,17 @@ export default function RegisterPage() {
               className="w-full h-12 rounded-xl bg-[#0b0d12] text-white/90 placeholder:text-white/40 border border-white/15 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 md:col-span-2"
             />
 
-            <input
-              id="epikId"
-              type="text"
-              required
-              value={form.epikId}
-              onChange={(e) => update("epikId", e.target.value)}
-              placeholder="ID de EPIK"
-              className="w-full h-12 rounded-xl bg-[#0b0d12] text-white/90 placeholder:text-white/40 border border-white/15 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 md:col-span-1"
-            />
+            {form.role === 'student' && (
+              <input
+                id="epikId"
+                type="text"
+                required
+                value={form.epikId}
+                onChange={(e) => update("epikId", e.target.value)}
+                placeholder="ID de EPIK"
+                className="w-full h-12 rounded-xl bg-[#0b0d12] text-white/90 placeholder:text-white/40 border border-white/15 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 md:col-span-1"
+              />
+            )}
 
             <input
               id="phone"
@@ -329,6 +390,11 @@ export default function RegisterPage() {
                 ok={passwordsMatch}
                 label="Coincidir con la confirmación"
               />
+              <div className="text-xs text-white/60">
+                {form.role === 'student'
+                  ? 'Tu cuenta será de estudiante y necesitará un EPIK ID.'
+                  : 'Tu cuenta será de profesor.'}
+              </div>
             </div>
 
             <button

@@ -10,6 +10,8 @@ type MenuKey =
   | "acerca"
   | null
 
+import { NavbarUserMenu } from './navbar-user-menu'
+
 export function Navbar() {
   const [active, setActive] = useState<MenuKey>(null)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -106,18 +108,7 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="rounded-full border border-white/20 text-white px-4 py-2 text-sm hover:bg-white/5 transition"
-          >
-            Ingresar
-          </Link>
-          <Link
-            href="/register"
-            className="rounded-full bg-primary text-[#0b0d12] px-4 py-2 text-sm font-medium hover:opacity-90 transition"
-          >
-            Registrarse
-          </Link>
+          <NavbarUserMenu />
         </div>
       </div>
 

@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 export default function ProfesoresLoginPage() {
 	const [email, setEmail] = useState('')
@@ -8,6 +10,11 @@ export default function ProfesoresLoginPage() {
 	const [isLoading, setIsLoading] = useState(false)
 	const [mounted, setMounted] = useState(false)
 	const [showPassword, setShowPassword] = useState(false)
+	const [error, setError] = useState('')
+	const router = useRouter()
+	const params = useSearchParams()
+	const redirect = params.get('redirect')
+	const supabase = createClient()
 
 	useEffect(() => {
 		setMounted(true)
@@ -16,10 +23,22 @@ export default function ProfesoresLoginPage() {
 	async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault()
 		setIsLoading(true)
+		setError('')
 		try {
-			// TODO: integrar API de auth (profesores)
-			await new Promise((r) => setTimeout(r, 600))
-			console.log({ email, password })
+			const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+			if (error) throw error
+			const role = (data.user as any)?.user_metadata?.role || 'student'
+			if (role !== 'professor') {
+				throw new Error('Tu cuenta no es de profesor')
+			}
+			if (redirect) {
+				router.push(redirect)
+			} else {
+				router.push('/profesores/dashboard')
+			}
+			router.refresh()
+		} catch (err: any) {
+			setError(err?.message || 'Error al iniciar sesión')
 		} finally {
 			setIsLoading(false)
 		}
@@ -36,6 +55,11 @@ export default function ProfesoresLoginPage() {
 					</h1>
 
 					<form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+						{error && (
+							<div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-sm px-3 py-2">
+								{error}
+							</div>
+						)}
 						<input
 							id="email"
 							type="email"
