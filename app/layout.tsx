@@ -31,7 +31,9 @@ export default function RootLayout({
       >
         <AuthProvider>
           <Navbar />
-          {children}
+          <div className="min-h-[calc(100dvh-4rem)]">
+            {children}
+          </div>
         </AuthProvider>
       </body>
     </html>
