@@ -106,9 +106,9 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {filtered.length === 0 && (
+          {filtered.length === 0 && (
           <div className="mt-16 text-center text-white/60">
-            No se encontraron profesores para "{query}".
+            No se encontraron profesores para &quot;{query}&quot;.
           </div>
         )}
       </section>

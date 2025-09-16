@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					.select('*')
 					.eq('id', session.user.id)
 					.single()
-				setProfile((data as any) ?? null)
+				setProfile((data as Profile | null) ?? null)
 			}
 			setLoading(false)
 		}
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					.select('*')
 					.eq('id', session.user.id)
 					.single()
-				setProfile((data as any) ?? null)
+				setProfile((data as Profile | null) ?? null)
 			} else {
 				setProfile(null)
 			}

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
 
@@ -35,10 +36,13 @@ export function NavbarUserMenu() {
 			>
 				<div className="size-8 rounded-full bg-primary grid place-items-center text-[#0b0d12] font-semibold">
 					{profile?.avatar_url ? (
-						<img
+						<Image
 							src={profile.avatar_url}
 							alt={profile.full_name}
+							width={32}
+							height={32}
 							className="size-8 rounded-full object-cover"
+							unoptimized
 						/>
 					) : (
 						<span>{initials(profile?.full_name || user.email || '')}</span>

@@ -252,7 +252,7 @@ function StarIcon({ className = "" }: { className?: string }) {
 
 type Point = { semester: string; rating: number }
 
-function RatingChart({ data }: { data: Point[] }) {
+function RatingChart({ data }: { data: readonly Point[] }) {
   const width = 480
   const height = 160
   const padding = 24

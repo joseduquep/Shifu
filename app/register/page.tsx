@@ -7,6 +7,12 @@ import { createClient } from '@/lib/supabase/client'
 
 type Role = 'student' | 'professor'
 
+interface UserMetadata {
+  full_name: string
+  role: Role
+  epik_id?: string
+}
+
 type StudentForm = {
   firstName: string
   lastName: string
@@ -126,7 +132,7 @@ export default function RegisterPage() {
     setError("")
     try {
       const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim()
-      const metadata: Record<string, any> = {
+      const metadata: UserMetadata = {
         full_name: fullName,
         role: form.role,
       }
@@ -140,7 +146,9 @@ export default function RegisterPage() {
       if (error) throw error
 
       // Si la sesión no se crea (confirmación de email activada), enviamos a login
-      const role = (data.user as any)?.user_metadata?.role || form.role
+      const role =
+        ((data.user?.user_metadata as { role?: Role } | undefined)?.role) ??
+        form.role
       const target = role === 'professor' ? '/profesores/dashboard' : '/dashboard'
 
       if (data.session) {
@@ -149,8 +157,9 @@ export default function RegisterPage() {
         router.push('/login?registered=1')
       }
       router.refresh()
-    } catch (err: any) {
-      setError(err?.message || 'Error al registrarse')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al registrarse'
+      setError(message)
     } finally {
       setIsLoading(false)
     }

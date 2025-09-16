@@ -4,6 +4,18 @@ import { supabasePublic } from '@/lib/supabase/public-client'
 
 const ParamsSchema = z.object({ id: z.string().uuid() })
 
+type MateriaRow = { materia_id: string; nombre: string }
+type StatRow = {
+	profesor_id: string
+	calificacion_promedio: number | null
+	cantidad_resenas: number
+}
+type SerieRow = {
+	semestre_codigo: string
+	calificacion_promedio: number | string
+	cantidad_resenas: number
+}
+
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
 	const { id } = await ctx.params
 	const parsed = ParamsSchema.safeParse({ id })
@@ -48,11 +60,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 		id: data.id,
 		nombreCompleto: data.nombre_completo,
 		bio: data.bio ?? null,
-		departamento: data.departamentos?.nombre ?? '',
-		universidad: data.departamentos?.universidades?.nombre ?? '',
-		materias: (materias || []).map((m: any) => ({ id: m.materia_id, nombre: m.nombre })),
-		calificacionPromedio: (srow as any)?.calificacion_promedio ?? null,
-		cantidadResenas: (srow as any)?.cantidad_resenas ?? 0,
-		ratingsPorSemestre: (series || []).map((s: any) => ({ semestre: s.semestre_codigo, rating: Number(s.calificacion_promedio) })),
+		departamento: data.departamentos?.[0]?.nombre ?? '',
+		universidad: data.departamentos?.[0]?.universidades?.[0]?.nombre ?? '',
+		materias: ((materias as MateriaRow[] | null) ?? []).map((m) => ({ id: m.materia_id, nombre: m.nombre })),
+		calificacionPromedio: (srow as StatRow | null)?.calificacion_promedio ?? null,
+		cantidadResenas: (srow as StatRow | null)?.cantidad_resenas ?? 0,
+		ratingsPorSemestre: ((series as SerieRow[] | null) ?? []).map((s) => ({ semestre: s.semestre_codigo, rating: Number(s.calificacion_promedio) })),
 	})
 }

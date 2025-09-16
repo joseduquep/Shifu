@@ -54,10 +54,10 @@ export async function updateProfesor(input: ProfesorUpdate) {
 	if (error) throw error
 
 	if (data.user_id) {
-		const attrs: any = {}
+		const attrs: Record<string, unknown> = {}
 		if (input.email) attrs.email = input.email
 		if (input.password) attrs.password = input.password
-		const meta: any = {}
+		const meta: Record<string, unknown> = {}
 		if (input.nombre_completo !== undefined) meta.full_name = input.nombre_completo
 		if (Object.keys(meta).length) attrs.user_metadata = meta
 		if (Object.keys(attrs).length) {

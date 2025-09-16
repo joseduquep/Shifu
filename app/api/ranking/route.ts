@@ -10,6 +10,17 @@ const QuerySchema = z.object({
 	offset: z.coerce.number().int().min(0).default(0),
 })
 
+type StatsRow = { profesor_id: string; calificacion_promedio: number | null; cantidad_resenas: number }
+
+type ProfesorRow = {
+	id: string
+	nombre_completo: string
+	departamentos?: {
+		nombre?: string
+		universidades?: { nombre?: string } | null
+	} | null
+}
+
 export async function GET(req: NextRequest) {
 	const { searchParams } = new URL(req.url)
 	const parsed = QuerySchema.safeParse(Object.fromEntries(searchParams))
@@ -45,21 +56,22 @@ export async function GET(req: NextRequest) {
 
 	// Stats para ranking y ordenamiento en memoria (ya que no embebemos)
 	const ids = (data || []).map((d) => d.id)
-	let stats = new Map<string, { calificacion_promedio: number | null; cantidad_resenas: number }>()
+	const stats = new Map<string, { calificacion_promedio: number | null; cantidad_resenas: number }>()
 	if (ids.length) {
 		const { data: srows } = await supabasePublic
 			.from('v_profesores_estadisticas')
 			.select('profesor_id, calificacion_promedio, cantidad_resenas')
 			.in('profesor_id', ids)
-		for (const r of srows || []) {
-			stats.set((r as any).profesor_id, {
-				calificacion_promedio: (r as any).calificacion_promedio,
-				cantidad_resenas: (r as any).cantidad_resenas,
+		for (const r of ((srows as StatsRow[] | null) ?? [])) {
+			stats.set(r.profesor_id, {
+				calificacion_promedio: r.calificacion_promedio,
+				cantidad_resenas: r.cantidad_resenas,
 			})
 		}
 	}
 
-	const sorted = (data || []).slice().sort((a: any, b: any) => {
+	const rows: ProfesorRow[] = (data ?? []) as ProfesorRow[]
+	const sorted = rows.slice().sort((a, b) => {
 		const sa = stats.get(a.id) || { calificacion_promedio: null, cantidad_resenas: 0 }
 		const sb = stats.get(b.id) || { calificacion_promedio: null, cantidad_resenas: 0 }
 		const aAvg = sa.calificacion_promedio ?? -1
@@ -68,7 +80,7 @@ export async function GET(req: NextRequest) {
 		return (sb.cantidad_resenas || 0) - (sa.cantidad_resenas || 0)
 	})
 
-	const out = sorted.map((row: any) => {
+	const out = sorted.map((row) => {
 		const st = stats.get(row.id) || { calificacion_promedio: null, cantidad_resenas: 0 }
 		return {
 			id: row.id,

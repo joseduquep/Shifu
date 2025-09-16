@@ -1,11 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-export default function LoginPage() {
+type Role = 'student' | 'professor'
+
+function LoginPageContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -28,15 +30,18 @@ export default function LoginPage() {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
-      const role = (data.user as any)?.user_metadata?.role || 'student'
+      const role =
+        ((data.user?.user_metadata as { role?: Role } | undefined)?.role) ??
+        'student'
       if (redirect) {
         router.push(redirect)
       } else {
         router.push(role === 'professor' ? '/profesores/dashboard' : '/dashboard')
       }
       router.refresh()
-    } catch (err: any) {
-      setError(err?.message || 'Error al iniciar sesión')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al iniciar sesión'
+      setError(message)
     } finally {
       setIsLoading(false)
     }
@@ -142,5 +147,13 @@ export default function LoginPage() {
         </div>
       </section>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div />}> 
+      <LoginPageContent />
+    </Suspense>
   )
 }

@@ -34,10 +34,11 @@ export default function Home() {
         </div>
 
         <div className="relative aspect-[4/3] md:aspect-[5/4] rounded-3xl overflow-hidden border border-white/10 bg-[#121621]">
-          <img
+          <Image
             src="/globe.svg"
             alt="Shifu hero visual"
-            className="absolute inset-0 m-auto w-3/4 opacity-90"
+            fill
+            className="absolute inset-0 opacity-90 object-contain"
           />
           <div className="absolute inset-0 pointer-events-none ring-1 ring-white/10 rounded-3xl" />
         </div>

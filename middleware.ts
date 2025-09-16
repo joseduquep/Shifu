@@ -9,7 +9,9 @@ export async function middleware(request: NextRequest) {
 
 	// Redirección si ya está logueado e intenta ir a páginas de auth
 	if (user && isAuthPage) {
-		const role = (user as any).user_metadata?.role || 'student'
+		const role =
+			((user?.user_metadata as { role?: 'student' | 'professor' } | undefined)?.role) ??
+			'student'
 		const dashboardUrl = role === 'professor' ? '/profesores/dashboard' : '/dashboard'
 		return Response.redirect(new URL(dashboardUrl, request.url))
 	}
@@ -20,13 +22,17 @@ export async function middleware(request: NextRequest) {
 
 	if (studentProtected.some((p) => path.startsWith(p))) {
 		if (!user) return Response.redirect(new URL('/login?redirect=' + path, request.url))
-		const role = (user as any).user_metadata?.role || 'student'
+		const role =
+			((user?.user_metadata as { role?: 'student' | 'professor' } | undefined)?.role) ??
+			'student'
 		if (role === 'professor') return Response.redirect(new URL('/profesores/dashboard', request.url))
 	}
 
 	if (professorProtected.some((p) => path.startsWith(p))) {
 		if (!user) return Response.redirect(new URL('/profesores/login?redirect=' + path, request.url))
-		const role = (user as any).user_metadata?.role || 'student'
+		const role =
+			((user?.user_metadata as { role?: 'student' | 'professor' } | undefined)?.role) ??
+			'student'
 		if (role !== 'professor') return Response.redirect(new URL('/dashboard', request.url))
 	}
 

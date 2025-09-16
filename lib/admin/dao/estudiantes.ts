@@ -61,10 +61,10 @@ export async function updateEstudiante(input: EstudianteUpdate) {
 
 	// Sincronizar con Auth
 	if (data.user_id) {
-		const attrs: any = {}
+		const attrs: Record<string, unknown> = {}
 		if (input.email) attrs.email = input.email
 		if (input.password) attrs.password = input.password
-		const meta: any = {}
+		const meta: Record<string, unknown> = {}
 		if (input.nombres !== undefined || input.apellidos !== undefined) {
 			meta.full_name = `${input.nombres ?? data.nombres} ${input.apellidos ?? data.apellidos}`.trim()
 		}

@@ -9,7 +9,7 @@ if (!url || !anonKey) {
 }
 
 export const supabasePublic = createClient(url, anonKey, {
-	autoRefreshToken: false,
-	persistSession: false,
-	fetch: (...args) => fetch(...args),
+	global: {
+	  fetch: (...args) => fetch(...args),
+	}
 })

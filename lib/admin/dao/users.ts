@@ -1,6 +1,13 @@
 import { supabaseAdmin } from './base'
 import type { UserCreate, UserUpdate } from '@/lib/admin/schemas/users'
 
+type UserMetadataUpdates = {
+  full_name?: string | null;
+  role?: 'student' | 'professor' | null;
+  epik_id?: string | null;
+  avatar_url?: string | null;
+};
+
 export type AdminUser = {
 	id: string
 	email: string
@@ -36,7 +43,11 @@ export async function createUser(input: UserCreate) {
 }
 
 export async function updateUser(input: UserUpdate) {
-	const updates: any = {}
+	const updates: {
+		email?: string;
+		password?: string;
+		user_metadata?: UserMetadataUpdates;
+	} = {};
 	if (input.email) updates.email = input.email
 	if (input.password) updates.password = input.password
 	if (input.full_name || input.role || input.epik_id || input.avatar_url) {

@@ -10,16 +10,21 @@ const QuerySchema = z.object({
 	offset: z.coerce.number().int().min(0).default(0),
 })
 
-type Row = {
-	id: string
-	nombre_completo: string
-	departamento: string
-	universidad: string
-	calificacion_promedio: number | null
-	cantidad_resenas: number
-}
 
 type MateriaRow = { materia_id: string; nombre: string }
+
+type MateriaActivaRow = { profesor_id: string; materia_id: string; nombre: string }
+
+type StatsRow = { profesor_id: string; calificacion_promedio: number | null; cantidad_resenas: number }
+
+type ProfesorRow = {
+	id: string
+	nombre_completo: string
+	departamentos?: {
+		nombre?: string
+		universidades?: { nombre?: string } | null
+	} | null
+}
 
 export async function GET(req: NextRequest) {
 	const { searchParams } = new URL(req.url)
@@ -60,14 +65,14 @@ export async function GET(req: NextRequest) {
 
 	// Materias activas por profesor
 	const ids = (data || []).map((d) => d.id)
-	let materiasPorProfesor = new Map<string, MateriaRow[]>()
+	const materiasPorProfesor = new Map<string, MateriaRow[]>()
 	if (ids.length) {
 		const { data: mrows, error: mErr } = await supabasePublic
 			.from('v_profesores_materias_activas')
 			.select('profesor_id, materia_id, nombre')
 			.in('profesor_id', ids)
 		if (!mErr && mrows) {
-			for (const r of mrows as any[]) {
+			for (const r of (mrows as MateriaActivaRow[])) {
 				const arr = materiasPorProfesor.get(r.profesor_id) || []
 				arr.push({ materia_id: r.materia_id, nombre: r.nombre })
 				materiasPorProfesor.set(r.profesor_id, arr)
@@ -76,21 +81,22 @@ export async function GET(req: NextRequest) {
 	}
 
 	// Estadísticas por profesor
-	let stats = new Map<string, { calificacion_promedio: number | null; cantidad_resenas: number }>()
+	const stats = new Map<string, { calificacion_promedio: number | null; cantidad_resenas: number }>()
 	if (ids.length) {
 		const { data: srows } = await supabasePublic
 			.from('v_profesores_estadisticas')
 			.select('profesor_id, calificacion_promedio, cantidad_resenas')
 			.in('profesor_id', ids)
-		for (const r of srows || []) {
-			stats.set((r as any).profesor_id, {
-				calificacion_promedio: (r as any).calificacion_promedio,
-				cantidad_resenas: (r as any).cantidad_resenas,
+		for (const r of ((srows as StatsRow[] | null) ?? [])) {
+			stats.set(r.profesor_id, {
+				calificacion_promedio: r.calificacion_promedio,
+				cantidad_resenas: r.cantidad_resenas,
 			})
 		}
 	}
 
-	const out = (data || []).map((row: any) => {
+	const rows: ProfesorRow[] = (data ?? []) as ProfesorRow[]
+	const out = rows.map((row) => {
 		const st = stats.get(row.id) || { calificacion_promedio: null, cantidad_resenas: 0 }
 		return {
 			id: row.id,

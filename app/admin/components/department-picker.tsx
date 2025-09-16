@@ -69,7 +69,7 @@ export function DepartmentPicker({
 							<li className="px-3 py-2 text-sm text-white/60">Sin resultados</li>
 						)}
 						{filtered.map((o) => (
-							<li key={o.id} role="option">
+							<li key={o.id} role="option" aria-selected={o.id === selectedId}>
 								<button
 									type="button"
 									onClick={() => {

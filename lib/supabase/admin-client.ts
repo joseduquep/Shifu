@@ -10,8 +10,5 @@ if (!url || !serviceRole) {
 
 // ¡Nunca expongas este cliente al cliente! Solo uso en handlers server-side.
 export const supabaseAdmin = createClient(url, serviceRole, {
-	persistSession: false,
-	autoRefreshToken: false,
 	auth: { persistSession: false },
-	fetch: (...args) => fetch(...args),
 })

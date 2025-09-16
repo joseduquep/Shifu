@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-export default function ProfesoresLoginPage() {
+type Role = 'student' | 'professor'
+
+function ProfesoresLoginContent() {
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
 	const [isLoading, setIsLoading] = useState(false)
@@ -27,7 +29,9 @@ export default function ProfesoresLoginPage() {
 		try {
 			const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 			if (error) throw error
-			const role = (data.user as any)?.user_metadata?.role || 'student'
+			const role =
+				((data.user?.user_metadata as { role?: Role } | undefined)?.role) ??
+				'student'
 			if (role !== 'professor') {
 				throw new Error('Tu cuenta no es de profesor')
 			}
@@ -37,8 +41,9 @@ export default function ProfesoresLoginPage() {
 				router.push('/profesores/dashboard')
 			}
 			router.refresh()
-		} catch (err: any) {
-			setError(err?.message || 'Error al iniciar sesión')
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Error al iniciar sesión'
+			setError(message)
 		} finally {
 			setIsLoading(false)
 		}
@@ -134,5 +139,13 @@ export default function ProfesoresLoginPage() {
 				</div>
 			</section>
 		</main>
+	)
+}
+
+export default function ProfesoresLoginPage() {
+	return (
+		<Suspense fallback={<div />}> 
+			<ProfesoresLoginContent />
+		</Suspense>
 	)
 }
