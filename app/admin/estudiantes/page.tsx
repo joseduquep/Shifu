@@ -14,7 +14,7 @@ export default async function AdminEstudiantesPage() {
 		<div className="space-y-6">
 			<section className="rounded-2xl border border-white/10 bg-[#121621] p-6">
 				<h2 className="text-lg font-medium">Estudiantes</h2>
-				<p className="text-white/70 text-sm mt-1">Crear con opción de cuenta Auth (password requerido).</p>
+				<p className="text-white/70 text-sm mt-1">Se crea y sincroniza usuario de Auth automáticamente.</p>
 			</section>
 
 			<section className="rounded-2xl border border-white/10 bg-[#121621] p-6">
@@ -59,8 +59,7 @@ async function actionCreate(formData: FormData) {
 		epik_id: formData.get('epik_id'),
 		telefono: formData.get('telefono') || undefined,
 		fecha_nacimiento: formData.get('fecha_nacimiento') || undefined,
-		create_auth_user: formData.get('create_auth_user') === 'on',
-		password: formData.get('password') || undefined,
+		password: formData.get('password'),
 	})
 	if (!parsed.success) throw new Error('Datos inválidos')
 	await createEstudiante(parsed.data)
@@ -76,6 +75,7 @@ async function actionUpdate(formData: FormData) {
 		epik_id: formData.get('epik_id') || undefined,
 		telefono: formData.get('telefono') || undefined,
 		fecha_nacimiento: formData.get('fecha_nacimiento') || undefined,
+		password: formData.get('password') || undefined,
 	})
 	if (!parsed.success) throw new Error('Datos inválidos')
 	await updateEstudiante(parsed.data)
@@ -116,11 +116,7 @@ function CreateForm() {
 				<input name="fecha_nacimiento" type="date" className="h-10 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-full" />
 			</div>
 			<div className="md:col-span-3 flex items-center gap-3">
-				<label className="inline-flex items-center gap-2 text-sm text-white/80">
-					<input type="checkbox" name="create_auth_user" defaultChecked />
-					Crear usuario de Auth
-				</label>
-				<input name="password" type="password" placeholder="Contraseña (requerida si creas usuario)" className="h-10 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-96" />
+				<input name="password" type="password" placeholder="Contraseña" className="h-10 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-96" required />
 			</div>
 			<div className="md:col-span-3">
 				<button type="submit" className="h-10 px-4 rounded-lg bg-primary text-[#0b0d12] text-sm font-medium">Crear estudiante</button>
@@ -139,6 +135,7 @@ function EditForm({ id, nombres, apellidos, email, epik_id, telefono, fecha_naci
 			<input name="epik_id" defaultValue={epik_id} className="h-9 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-40" />
 			<input name="telefono" defaultValue={telefono} className="h-9 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-40" />
 			<input name="fecha_nacimiento" defaultValue={fecha_nacimiento} className="h-9 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-40" />
+			<input name="password" type="password" placeholder="Nueva contraseña (opcional, requerida si no tiene Auth)" className="h-9 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-64" />
 			<button type="submit" className="h-9 px-3 rounded-lg border border-white/20 text-white/80 hover:bg-white/5">Guardar</button>
 		</form>
 	)

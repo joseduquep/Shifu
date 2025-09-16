@@ -7,8 +7,7 @@ export const EstudianteCreateSchema = z.object({
 	epik_id: z.string().trim().min(1),
 	telefono: z.string().trim().optional(),
 	fecha_nacimiento: z.string().trim().optional(),
-	create_auth_user: z.coerce.boolean().default(true),
-	password: z.string().min(8).optional(),
+	password: z.string().min(8, 'Mínimo 8 caracteres'),
 })
 
 export const EstudianteUpdateSchema = z.object({
@@ -19,6 +18,7 @@ export const EstudianteUpdateSchema = z.object({
 	epik_id: z.string().trim().optional(),
 	telefono: z.string().trim().optional(),
 	fecha_nacimiento: z.string().trim().optional(),
+	password: z.string().min(8).optional(),
 })
 
 export type EstudianteCreate = z.infer<typeof EstudianteCreateSchema>

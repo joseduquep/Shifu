@@ -11,22 +11,20 @@ export async function listEstudiantes() {
 }
 
 export async function createEstudiante(input: EstudianteCreate) {
-	let userId: string | null = null
-	if (input.create_auth_user) {
-		if (!input.password) throw new Error('Se requiere contraseña para crear usuario de Auth')
-		const { data, error } = await supabaseAdmin.auth.admin.createUser({
-			email: input.email,
-			password: input.password,
-			email_confirm: true,
-			user_metadata: {
-				full_name: `${input.nombres} ${input.apellidos}`.trim(),
-				role: 'student',
-				epik_id: input.epik_id,
-			},
-		})
-		if (error) throw error
-		userId = data.user?.id ?? null
-	}
+	// Siempre crear usuario de Auth y vincularlo
+	const { data: created, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+		email: input.email,
+		password: input.password,
+		email_confirm: true,
+		user_metadata: {
+			full_name: `${input.nombres} ${input.apellidos}`.trim(),
+			role: 'student',
+			epik_id: input.epik_id,
+		},
+	})
+	if (authErr) throw authErr
+	const userId = created.user?.id ?? null
+
 	const { data: est, error: e2 } = await supabaseAdmin
 		.from('estudiantes')
 		.insert({
@@ -45,6 +43,7 @@ export async function createEstudiante(input: EstudianteCreate) {
 }
 
 export async function updateEstudiante(input: EstudianteUpdate) {
+	// Actualizamos fila y recuperamos user_id y valores actuales para construir metadata
 	const { data, error } = await supabaseAdmin
 		.from('estudiantes')
 		.update({
@@ -56,13 +55,69 @@ export async function updateEstudiante(input: EstudianteUpdate) {
 			fecha_nacimiento: input.fecha_nacimiento,
 		})
 		.eq('id', input.id)
-		.select('*')
+		.select('id, user_id, nombres, apellidos, email, epik_id')
 		.single()
 	if (error) throw error
+
+	// Sincronizar con Auth
+	if (data.user_id) {
+		const attrs: any = {}
+		if (input.email) attrs.email = input.email
+		if (input.password) attrs.password = input.password
+		const meta: any = {}
+		if (input.nombres !== undefined || input.apellidos !== undefined) {
+			meta.full_name = `${input.nombres ?? data.nombres} ${input.apellidos ?? data.apellidos}`.trim()
+		}
+		if (input.epik_id !== undefined) meta.epik_id = input.epik_id
+		if (Object.keys(meta).length) attrs.user_metadata = meta
+		if (Object.keys(attrs).length) {
+			const { error: upErr } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, attrs)
+			if (upErr) throw upErr
+		}
+	} else {
+		// No tiene usuario aún: obligar a crearlo si hay cambio o si así se solicita
+		if (input.password) {
+			const { data: created, error: cErr } = await supabaseAdmin.auth.admin.createUser({
+				email: input.email ?? data.email,
+				password: input.password,
+				email_confirm: true,
+				user_metadata: {
+					full_name: `${input.nombres ?? data.nombres} ${input.apellidos ?? data.apellidos}`.trim(),
+					role: 'student',
+					epik_id: input.epik_id ?? data.epik_id,
+				},
+			})
+			if (cErr) throw cErr
+			const uid = created.user?.id
+			if (uid) {
+				const { error: linkErr } = await supabaseAdmin
+					.from('estudiantes')
+					.update({ user_id: uid })
+					.eq('id', data.id)
+				if (linkErr) throw linkErr
+			}
+		} else {
+			throw new Error('Este estudiante no tiene usuario de Auth vinculado. Proporciona una contraseña para crearlo y sincronizar.')
+		}
+	}
+
 	return data
 }
 
 export async function deleteEstudiante(id: string) {
+	// Obtener user_id antes de eliminar
+	const { data: row, error: selErr } = await supabaseAdmin
+		.from('estudiantes')
+		.select('user_id')
+		.eq('id', id)
+		.single()
+	if (selErr) throw selErr
+
 	const { error } = await supabaseAdmin.from('estudiantes').delete().eq('id', id)
 	if (error) throw error
+
+	if (row?.user_id) {
+		const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(row.user_id)
+		if (delErr) throw delErr
+	}
 }

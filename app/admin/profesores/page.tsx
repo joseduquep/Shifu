@@ -2,29 +2,32 @@ import { z } from 'zod'
 import { ProfesorCreateSchema, ProfesorUpdateSchema } from '@/lib/admin/schemas/profesores'
 import { createProfesor, deleteProfesor, listProfesores, updateProfesor } from '@/lib/admin/dao/profesores'
 import { listMaterias } from '@/lib/admin/dao/materias'
+import { listDepartamentos } from '@/lib/admin/dao/departamentos'
 import { listMateriasDeProfesor, setMateriasDeProfesor } from '@/lib/admin/dao/profesores_materias'
+import { DepartmentPicker } from '@/app/admin/components/department-picker'
 
 export const dynamic = 'force-dynamic'
 
 async function getData() {
-	const [profesores, materias] = await Promise.all([
+	const [profesores, materias, departamentos] = await Promise.all([
 		listProfesores(),
 		listMaterias(),
+		listDepartamentos(),
 	])
-	return { profesores, materias }
+	return { profesores, materias, departamentos }
 }
 
 export default async function AdminProfesoresPage() {
-	const { profesores, materias } = await getData()
+	const { profesores, materias, departamentos } = await getData()
 	return (
 		<div className="space-y-6">
 			<section className="rounded-2xl border border-white/10 bg-[#121621] p-6">
 				<h2 className="text-lg font-medium">Profesores</h2>
-				<p className="text-white/70 text-sm mt-1">Crear con opción de cuenta Auth. Gestiona materias activas.</p>
+				<p className="text-white/70 text-sm mt-1">Se crea y sincroniza usuario de Auth automáticamente. Gestiona materias activas.</p>
 			</section>
 
 			<section className="rounded-2xl border border-white/10 bg-[#121621] p-6">
-				<CreateForm materias={materias} />
+				<CreateForm departamentos={departamentos} />
 			</section>
 
 			<section className="rounded-2xl border border-white/10 bg-[#121621] p-0 overflow-hidden">
@@ -42,7 +45,7 @@ export default async function AdminProfesoresPage() {
 								<td className="px-4 py-2">{p.nombre_completo}</td>
 								<td className="px-4 py-2">{p.email ?? '—'}</td>
 								<td className="px-4 py-2 text-right">
-									<EditForm id={p.id} nombre_completo={p.nombre_completo} email={p.email ?? ''} bio={p.bio ?? ''} departamento_id={p.departamento_id} />
+									<EditForm id={p.id} nombre_completo={p.nombre_completo} email={p.email ?? ''} bio={p.bio ?? ''} departamento_id={p.departamento_id} departamentos={departamentos} />
 									<ManageSubjectsForm profesorId={p.id} materias={materias} />
 									<DeleteForm id={p.id} />
 								</td>
@@ -59,11 +62,10 @@ async function actionCreate(formData: FormData) {
 	'use server'
 	const parsed = ProfesorCreateSchema.safeParse({
 		nombre_completo: formData.get('nombre_completo'),
-		email: formData.get('email') || undefined,
+		email: formData.get('email'),
 		bio: formData.get('bio') || undefined,
 		departamento_id: formData.get('departamento_id'),
-		create_auth_user: formData.get('create_auth_user') === 'on',
-		password: formData.get('password') || undefined,
+		password: formData.get('password'),
 	})
 	if (!parsed.success) throw new Error('Datos inválidos')
 	await createProfesor(parsed.data)
@@ -77,6 +79,7 @@ async function actionUpdate(formData: FormData) {
 		email: formData.get('email') || undefined,
 		bio: formData.get('bio') || undefined,
 		departamento_id: formData.get('departamento_id') || undefined,
+		password: formData.get('password') || undefined,
 	})
 	if (!parsed.success) throw new Error('Datos inválidos')
 	await updateProfesor(parsed.data)
@@ -102,7 +105,7 @@ async function actionSetMaterias(formData: FormData) {
 	await setMateriasDeProfesor(profesorId, entries)
 }
 
-function CreateForm({ materias }: { materias: { id: string; nombre: string; departamento_id: string }[] }) {
+function CreateForm({ departamentos }: { departamentos: { id: string; nombre: string }[] }) {
 	return (
 		<form action={actionCreate} className="grid grid-cols-1 md:grid-cols-3 gap-3">
 			<div className="md:col-span-2">
@@ -111,7 +114,7 @@ function CreateForm({ materias }: { materias: { id: string; nombre: string; depa
 			</div>
 			<div>
 				<label className="block text-xs text-white/70 mb-1">Email</label>
-				<input name="email" type="email" className="h-10 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-full" />
+				<input name="email" type="email" className="h-10 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-full" required />
 			</div>
 			<div className="md:col-span-3">
 				<label className="block text-xs text-white/70 mb-1">Bio</label>
@@ -119,15 +122,10 @@ function CreateForm({ materias }: { materias: { id: string; nombre: string; depa
 			</div>
 			<div>
 				<label className="block text-xs text-white/70 mb-1">Departamento</label>
-				{/* Para simplificar, reusaremos el id directamente; una mejora posterior puede cargar departamentos aquí */}
-				<input name="departamento_id" className="h-10 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-full" placeholder="UUID del departamento" required />
+				<DepartmentPicker name="departamento_id" options={departamentos} />
 			</div>
 			<div className="md:col-span-3 flex items-center gap-3">
-				<label className="inline-flex items-center gap-2 text-sm text-white/80">
-					<input type="checkbox" name="create_auth_user" />
-					Crear usuario de Auth
-				</label>
-				<input name="password" type="password" placeholder="Contraseña (requerida si creas usuario)" className="h-10 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-96" />
+				<input name="password" type="password" placeholder="Contraseña" className="h-10 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-96" required />
 			</div>
 			<div className="md:col-span-3">
 				<button type="submit" className="h-10 px-4 rounded-lg bg-primary text-[#0b0d12] text-sm font-medium">Crear profesor</button>
@@ -136,14 +134,15 @@ function CreateForm({ materias }: { materias: { id: string; nombre: string; depa
 	)
 }
 
-function EditForm({ id, nombre_completo, email, bio, departamento_id }: { id: string; nombre_completo: string; email: string; bio: string; departamento_id: string }) {
+function EditForm({ id, nombre_completo, email, bio, departamento_id, departamentos }: { id: string; nombre_completo: string; email: string; bio: string; departamento_id: string; departamentos: { id: string; nombre: string }[] }) {
 	return (
 		<form action={actionUpdate} className="inline-flex items-center gap-2 mr-2 flex-wrap">
 			<input type="hidden" name="id" value={id} />
 			<input name="nombre_completo" defaultValue={nombre_completo} className="h-9 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-56" />
 			<input name="email" defaultValue={email} className="h-9 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-56" />
 			<input name="bio" defaultValue={bio} className="h-9 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-64" />
-			<input name="departamento_id" defaultValue={departamento_id} className="h-9 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-64" />
+			<DepartmentPicker name="departamento_id" options={departamentos} defaultValue={departamento_id} className="w-64" />
+			<input name="password" type="password" placeholder="Nueva contraseña (opcional, requerida si no tiene Auth)" className="h-9 rounded-lg bg-[#0b0d12] border border-white/15 px-3 text-sm w-64" />
 			<button type="submit" className="h-9 px-3 rounded-lg border border-white/20 text-white/80 hover:bg-white/5">Guardar</button>
 		</form>
 	)
