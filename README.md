@@ -23,6 +23,29 @@ Abre `http://localhost:3000` en tu navegador para ver la app.
 
 Puedes empezar a editar la página modificando `app/page.tsx`. La página se actualiza automáticamente.
 
+## 🧪 Pruebas Automáticas
+
+El proyecto cuenta con **78 pruebas automáticas** que garantizan la calidad del código:
+
+```bash
+# Ejecutar todas las pruebas
+npm test
+
+# Ejecutar en modo watch
+npm run test:watch
+
+# Ejecutar con reporte de cobertura
+npm run test:coverage
+```
+
+**Cobertura de Pruebas:**
+- ✅ Validación de esquemas (Zod)
+- ✅ Funciones utilitarias
+- ✅ Flujos de integración
+- ✅ Pruebas end-to-end
+
+Ver `Pruebas-Automaticas-de-Software.md` para la documentación completa de la estrategia de pruebas.
+
 ## Aprende más
 
 Para aprender más sobre Next.js, revisa:
