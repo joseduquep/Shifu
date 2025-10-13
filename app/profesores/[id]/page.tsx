@@ -6,16 +6,20 @@ import { FavoriteButton } from "@/app/components/FavoriteButton"
 export default async function ProfessorProfile({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }) {
-  const { id } = await params
+  const { id } = params
   const hdrs = await headers()
   const envBase = process.env.NEXT_PUBLIC_BASE_URL
   const proto = hdrs.get("x-forwarded-proto") || "http"
-  const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "localhost:3000"
+  const host =
+    hdrs.get("x-forwarded-host") || hdrs.get("host") || "localhost:3000"
   const runtimeBase = `${proto}://${host}`
-  const baseUrl = envBase && /^https?:\/\//.test(envBase) ? envBase : runtimeBase
-  const res = await fetch(`${baseUrl}/api/profesores/${id}`, { cache: "no-store" })
+  const baseUrl =
+    envBase && /^https?:\/\//.test(envBase) ? envBase : runtimeBase
+  const res = await fetch(`${baseUrl}/api/profesores/${id}`, {
+    cache: "no-store",
+  })
   if (!res.ok) return notFound()
   const prof = await res.json()
 
@@ -40,7 +44,7 @@ export default async function ProfessorProfile({
                   .split(" ")
                   .filter(Boolean)
                   .slice(0, 2)
-                  .map((p) => p[0]?.toUpperCase())
+                  .map((p: string) => p[0]?.toUpperCase())
                   .join("")}
               </div>
               <div>
@@ -55,14 +59,14 @@ export default async function ProfessorProfile({
 
             <div className="flex items-center gap-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#0b0d12] px-4 py-2 text-sm text-white/80">
-                <span className="text-primary font-medium">{(prof.calificacionPromedio ?? 0).toFixed(1)}</span>
-                <span className="text-white/50">({prof.cantidadResenas} reseñas)</span>
+                <span className="text-primary font-medium">
+                  {(prof.calificacionPromedio ?? 0).toFixed(1)}
+                </span>
+                <span className="text-white/50">
+                  ({prof.cantidadResenas} reseñas)
+                </span>
               </div>
-              <FavoriteButton 
-                profesorId={id} 
-                size="md" 
-                variant="both"
-              />
+              <FavoriteButton profesorId={id} size="md" variant="both" />
             </div>
           </div>
 
@@ -76,14 +80,16 @@ export default async function ProfessorProfile({
                 Materias activas
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {prof.materias.map((m: any) => (
-                  <span
-                    key={m.id ?? m}
-                    className="inline-flex items-center rounded-full border border-white/10 bg-[#0b0d12] px-2.5 py-1 text-xs text-white/70"
-                  >
-                    {typeof m === 'string' ? m : m.nombre}
-                  </span>
-                ))}
+                {prof.materias.map(
+                  (m: { id?: string; nombre?: string } | string) => (
+                    <span
+                      key={typeof m === "string" ? m : m.id ?? m.nombre ?? ""}
+                      className="inline-flex items-center rounded-full border border-white/10 bg-[#0b0d12] px-2.5 py-1 text-xs text-white/70"
+                    >
+                      {typeof m === "string" ? m : m.nombre}
+                    </span>
+                  )
+                )}
               </div>
             </div>
           ) : null}
@@ -108,7 +114,11 @@ export default async function ProfessorProfile({
               {[1, 2, 3, 4, 5].map((star) => (
                 <StarIcon
                   key={star}
-                  className={star <= Math.round(prof.calificacionPromedio ?? 0) ? "text-primary" : "text-white/20"}
+                  className={
+                    star <= Math.round(prof.calificacionPromedio ?? 0)
+                      ? "text-primary"
+                      : "text-white/20"
+                  }
                 />
               ))}
             </div>
@@ -130,32 +140,77 @@ export default async function ProfessorProfile({
         {/* Reseñas públicas */}
         <div className="mt-6 rounded-3xl border border-white/10 bg-[#121621] p-6 md:p-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-white">Reseñas recientes</h2>
+            <h2 className="text-lg font-medium text-white">
+              Reseñas recientes
+            </h2>
             <span className="text-xs text-white/60">Públicas</span>
           </div>
-          {Array.isArray((prof as any).resenasPublicas) && (prof as any).resenasPublicas.length > 0 ? (
+          {Array.isArray(
+            (
+              prof as {
+                resenasPublicas?: {
+                  id: string
+                  rating: number
+                  semestre: string
+                  materia?: string
+                  comentario?: string
+                  anonimo?: boolean
+                }[]
+              }
+            ).resenasPublicas
+          ) &&
+          (prof as { resenasPublicas?: { id: string }[] }).resenasPublicas!
+            .length > 0 ? (
             <ul className="mt-4 space-y-4">
-              {(prof as any).resenasPublicas.map((r: any) => (
-                <li key={r.id} className="rounded-2xl border border-white/10 bg-[#0b0d12] p-4">
+              {(
+                prof as {
+                  resenasPublicas: {
+                    id: string
+                    rating: number
+                    semestre: string
+                    materia?: string
+                    comentario?: string
+                    anonimo?: boolean
+                  }[]
+                }
+              ).resenasPublicas.map((r) => (
+                <li
+                  key={r.id}
+                  className="rounded-2xl border border-white/10 bg-[#0b0d12] p-4"
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-white/80">
                       <StarIcon className="text-primary" />
-                      <span className="text-sm font-medium">{Number(r.rating).toFixed(1)}</span>
-                      <span className="text-xs text-white/50">{r.semestre}</span>
-                      {r.materia && <span className="text-xs text-white/50">· {r.materia}</span>}
+                      <span className="text-sm font-medium">
+                        {Number(r.rating).toFixed(1)}
+                      </span>
+                      <span className="text-xs text-white/50">
+                        {r.semestre}
+                      </span>
+                      {r.materia && (
+                        <span className="text-xs text-white/50">
+                          · {r.materia}
+                        </span>
+                      )}
                     </div>
                     {r.anonimo && (
-                      <span className="text-[10px] uppercase tracking-widest text-white/40">Anónimo</span>
+                      <span className="text-[10px] uppercase tracking-widest text-white/40">
+                        Anónimo
+                      </span>
                     )}
                   </div>
                   {r.comentario && (
-                    <p className="mt-3 text-sm text-white/80 whitespace-pre-line">{r.comentario}</p>
+                    <p className="mt-3 text-sm text-white/80 whitespace-pre-line">
+                      {r.comentario}
+                    </p>
                   )}
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="mt-4 text-white/60 text-sm">Aún no hay reseñas.</div>
+            <div className="mt-4 text-white/60 text-sm">
+              Aún no hay reseñas.
+            </div>
           )}
         </div>
       </section>
@@ -205,15 +260,22 @@ function RatingChart({ data }: { data: readonly Point[] }) {
   const height = 160
   const padding = 24
 
-  const xs = data.map((_, i) => padding + (i * (width - padding * 2)) / Math.max(1, data.length - 1))
+  const xs = data.map(
+    (_, i) =>
+      padding + (i * (width - padding * 2)) / Math.max(1, data.length - 1)
+  )
 
   // Escala fija 1..5 como eje principal
   const yMin = 1
   const yMax = 5
-  const y = (r: number) => padding + (height - padding * 2) * (1 - (r - yMin) / (yMax - yMin))
+  const y = (r: number) =>
+    padding + (height - padding * 2) * (1 - (r - yMin) / (yMax - yMin))
 
   const dPath = xs
-    .map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y(data[i].rating).toFixed(1)}`)
+    .map(
+      (x, i) =>
+        `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y(data[i].rating).toFixed(1)}`
+    )
     .join(" ")
 
   return (
@@ -240,7 +302,13 @@ function RatingChart({ data }: { data: readonly Point[] }) {
                 className="text-white/10"
                 strokeDasharray="2 3"
               />
-              <text x={padding - 8} y={gy + 3} textAnchor="end" fontSize="10" fill="#9aa3b2">
+              <text
+                x={padding - 8}
+                y={gy + 3}
+                textAnchor="end"
+                fontSize="10"
+                fill="#9aa3b2"
+              >
                 {val}
               </text>
             </g>
@@ -248,11 +316,29 @@ function RatingChart({ data }: { data: readonly Point[] }) {
         })}
 
         {/* Ejes */}
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="currentColor" />
-        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="currentColor" />
+        <line
+          x1={padding}
+          y1={height - padding}
+          x2={width - padding}
+          y2={height - padding}
+          stroke="currentColor"
+        />
+        <line
+          x1={padding}
+          y1={padding}
+          x2={padding}
+          y2={height - padding}
+          stroke="currentColor"
+        />
 
         {/* Línea principal */}
-        <path d={dPath} fill="none" stroke="currentColor" className="text-primary" strokeWidth="2" />
+        <path
+          d={dPath}
+          fill="none"
+          stroke="currentColor"
+          className="text-primary"
+          strokeWidth="2"
+        />
 
         {/* Puntos con tooltip (burbuja) */}
         {xs.map((x, i) => {
@@ -271,11 +357,29 @@ function RatingChart({ data }: { data: readonly Point[] }) {
                 transform={`translate(${x}, ${yy - 18})`}
                 className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
               >
-                <rect x={-22} y={-16} width={44} height={18} rx={6} fill="#0b0d12" stroke="rgba(255,255,255,0.15)" />
-                <text x={0} y={-4} textAnchor="middle" fontSize="10" fill="#b9d9ff">
+                <rect
+                  x={-22}
+                  y={-16}
+                  width={44}
+                  height={18}
+                  rx={6}
+                  fill="#0b0d12"
+                  stroke="rgba(255,255,255,0.15)"
+                />
+                <text
+                  x={0}
+                  y={-4}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fill="#b9d9ff"
+                >
                   {data[i].rating.toFixed(1)}
                 </text>
-                <polygon points="0,0 -4,6 4,6" fill="#0b0d12" stroke="rgba(255,255,255,0.15)" />
+                <polygon
+                  points="0,0 -4,6 4,6"
+                  fill="#0b0d12"
+                  stroke="rgba(255,255,255,0.15)"
+                />
               </g>
             </g>
           )
@@ -283,7 +387,14 @@ function RatingChart({ data }: { data: readonly Point[] }) {
 
         {/* Labels de semestre (eje X) */}
         {xs.map((x, i) => (
-          <text key={`t-${i}`} x={x} y={height - padding + 14} textAnchor="middle" fontSize="10" fill="#9aa3b2">
+          <text
+            key={`t-${i}`}
+            x={x}
+            y={height - padding + 14}
+            textAnchor="middle"
+            fontSize="10"
+            fill="#9aa3b2"
+          >
             {data[i].semester}
           </text>
         ))}
@@ -291,4 +402,3 @@ function RatingChart({ data }: { data: readonly Point[] }) {
     </div>
   )
 }
-

@@ -30,7 +30,7 @@ export default function DashboardPage() {
     results: semanticResults,
     total: semanticTotal,
     isLoading: semanticLoading,
-    error: semanticError
+    error: semanticError,
   } = useSemanticSearch()
 
   // Catálogos
@@ -39,9 +39,11 @@ export default function DashboardPage() {
   const [semestres, setSemestres] = useState<Semestre[]>([])
 
   // Filtros seleccionados (panel) y aplicados (consulta)
-  const [selectedDepartamentoId, setSelectedDepartamentoId] = useState<string>("")
+  const [selectedDepartamentoId, setSelectedDepartamentoId] =
+    useState<string>("")
   const [selectedMateriaId, setSelectedMateriaId] = useState<string>("")
-  const [selectedSemestreCodigo, setSelectedSemestreCodigo] = useState<string>("")
+  const [selectedSemestreCodigo, setSelectedSemestreCodigo] =
+    useState<string>("")
 
   const [appliedDepartamentoId, setAppliedDepartamentoId] = useState<string>("")
   const [appliedMateriaId, setAppliedMateriaId] = useState<string>("")
@@ -62,7 +64,7 @@ export default function DashboardPage() {
         const [deps, sems] = await Promise.all([depsRes.json(), semRes.json()])
         setDepartamentos(deps || [])
         setSemestres(sems || [])
-      } catch (e) {
+      } catch {
         // noop: mantener vacíos si falla
       }
     }
@@ -74,12 +76,14 @@ export default function DashboardPage() {
     const loadMaterias = async () => {
       try {
         const url = selectedDepartamentoId
-          ? `/api/materias?departamentoId=${encodeURIComponent(selectedDepartamentoId)}`
+          ? `/api/materias?departamentoId=${encodeURIComponent(
+              selectedDepartamentoId
+            )}`
           : "/api/materias"
         const res = await fetch(url)
         const data = await res.json()
         setMaterias(data || [])
-      } catch (e) {
+      } catch {
         setMaterias([])
       }
     }
@@ -92,13 +96,15 @@ export default function DashboardPage() {
       setLoading(true)
       try {
         const params = new URLSearchParams()
-        if (appliedDepartamentoId) params.set("departamentoId", appliedDepartamentoId)
+        if (appliedDepartamentoId)
+          params.set("departamentoId", appliedDepartamentoId)
         if (appliedMateriaId) params.set("materiaId", appliedMateriaId)
-        if (appliedSemestreCodigo) params.set("semestreCodigo", appliedSemestreCodigo)
+        if (appliedSemestreCodigo)
+          params.set("semestreCodigo", appliedSemestreCodigo)
         const res = await fetch(`/api/profesores?${params.toString()}`)
         const json = await res.json()
         setProfesores(Array.isArray(json.items) ? json.items : [])
-      } catch (e) {
+      } catch {
         setProfesores([])
       } finally {
         setLoading(false)
@@ -118,8 +124,12 @@ export default function DashboardPage() {
 
   const filtered = useMemo(() => {
     // Si hay query y búsqueda semántica está habilitada, usar resultados semánticos
-    if (query.trim() && useSemanticSearchEnabled && semanticResults.length > 0) {
-      return semanticResults.map(result => ({
+    if (
+      query.trim() &&
+      useSemanticSearchEnabled &&
+      semanticResults.length > 0
+    ) {
+      return semanticResults.map((result) => ({
         id: result.id,
         nombreCompleto: result.nombreCompleto,
         departamento: result.departamento,
@@ -127,10 +137,10 @@ export default function DashboardPage() {
         materias: result.materias || [],
         calificacionPromedio: result.calificacionPromedio,
         cantidadResenas: result.cantidadResenas,
-        relevanciaScore: result.relevanciaScore
+        relevanciaScore: result.relevanciaScore,
       }))
     }
-    
+
     // Búsqueda tradicional por palabras clave
     const q = query.trim().toLowerCase()
     if (!q) return profesores
@@ -197,19 +207,25 @@ export default function DashboardPage() {
                 <input
                   type="checkbox"
                   checked={useSemanticSearchEnabled}
-                  onChange={(e) => setUseSemanticSearchEnabled(e.target.checked)}
+                  onChange={(e) =>
+                    setUseSemanticSearchEnabled(e.target.checked)
+                  }
                   className="w-4 h-4 rounded border-white/20 bg-[#1a1d26] text-primary focus:ring-primary/30 focus:ring-2"
                 />
                 <span>Búsqueda semántica</span>
               </label>
               <div className="text-xs text-white/50">
-                {useSemanticSearchEnabled ? 'Resultados ordenados por relevancia' : 'Búsqueda tradicional'}
+                {useSemanticSearchEnabled
+                  ? "Resultados ordenados por relevancia"
+                  : "Búsqueda tradicional"}
               </div>
             </div>
             {query.trim() && useSemanticSearchEnabled && (
               <div className="flex items-center gap-2 text-xs text-primary">
                 <div className="w-2 h-2 bg-primary rounded-full"></div>
-                {semanticLoading ? 'Buscando...' : `${semanticTotal} resultados`}
+                {semanticLoading
+                  ? "Buscando..."
+                  : `${semanticTotal} resultados`}
               </div>
             )}
           </div>
@@ -225,35 +241,59 @@ export default function DashboardPage() {
                 }}
                 className="w-full h-11 rounded-lg bg-[#1a1d26] text-white/90 border-0 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 hover:bg-[#1e212a] transition-colors appearance-none cursor-pointer"
               >
-                <option value="" className="bg-[#1a1d26] text-white/60">Programa/Departamento</option>
+                <option value="" className="bg-[#1a1d26] text-white/60">
+                  Programa/Departamento
+                </option>
                 {departamentos.map((d) => (
-                  <option key={d.id} value={d.id} className="bg-[#1a1d26] text-white">{d.nombre}</option>
+                  <option
+                    key={d.id}
+                    value={d.id}
+                    className="bg-[#1a1d26] text-white"
+                  >
+                    {d.nombre}
+                  </option>
                 ))}
               </select>
             </div>
-            
+
             <div className="flex-1">
               <select
                 value={selectedMateriaId}
                 onChange={(e) => setSelectedMateriaId(e.target.value)}
                 className="w-full h-11 rounded-lg bg-[#1a1d26] text-white/90 border-0 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 hover:bg-[#1e212a] transition-colors appearance-none cursor-pointer"
               >
-                <option value="" className="bg-[#1a1d26] text-white/60">Materia</option>
+                <option value="" className="bg-[#1a1d26] text-white/60">
+                  Materia
+                </option>
                 {materias.map((m) => (
-                  <option key={m.id} value={m.id} className="bg-[#1a1d26] text-white">{m.nombre}</option>
+                  <option
+                    key={m.id}
+                    value={m.id}
+                    className="bg-[#1a1d26] text-white"
+                  >
+                    {m.nombre}
+                  </option>
                 ))}
               </select>
             </div>
-            
+
             <div className="flex-1">
               <select
                 value={selectedSemestreCodigo}
                 onChange={(e) => setSelectedSemestreCodigo(e.target.value)}
                 className="w-full h-11 rounded-lg bg-[#1a1d26] text-white/90 border-0 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 hover:bg-[#1e212a] transition-colors appearance-none cursor-pointer"
               >
-                <option value="" className="bg-[#1a1d26] text-white/60">Semestre</option>
+                <option value="" className="bg-[#1a1d26] text-white/60">
+                  Semestre
+                </option>
                 {semestres.map((s) => (
-                  <option key={s.codigo} value={s.codigo} className="bg-[#1a1d26] text-white">{s.codigo}</option>
+                  <option
+                    key={s.codigo}
+                    value={s.codigo}
+                    className="bg-[#1a1d26] text-white"
+                  >
+                    {s.codigo}
+                  </option>
                 ))}
               </select>
             </div>
@@ -297,19 +337,22 @@ export default function DashboardPage() {
                 materias={p.materias}
               />
               {/* Indicador de relevancia semántica */}
-              {query.trim() && useSemanticSearchEnabled && 'relevanciaScore' in p && (
-                <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary">
-                  <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-                  <span>{Math.round((p.relevanciaScore || 0) * 100)}%</span>
-                </div>
-              )}
+              {query.trim() &&
+                useSemanticSearchEnabled &&
+                "relevanciaScore" in p && (
+                  <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+                    <span>{Math.round((p.relevanciaScore || 0) * 100)}%</span>
+                  </div>
+                )}
             </div>
           ))}
         </div>
 
         {filtered.length === 0 && !loading && (
           <div className="mt-16 text-center text-white/60">
-            No se encontraron profesores {query ? (
+            No se encontraron profesores{" "}
+            {query ? (
               <>para &quot;{query}&quot;.</>
             ) : (
               <>con los filtros seleccionados.</>
@@ -374,4 +417,3 @@ function ClearIcon() {
     </svg>
   )
 }
-
