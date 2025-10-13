@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { headers } from "next/headers"
+import { FavoriteButton } from "@/app/components/FavoriteButton"
 
 export default async function ProfessorProfile({
   params,
@@ -52,9 +53,16 @@ export default async function ProfessorProfile({
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#0b0d12] px-4 py-2 text-sm text-white/80">
-              <span className="text-primary font-medium">{(prof.calificacionPromedio ?? 0).toFixed(1)}</span>
-              <span className="text-white/50">({prof.cantidadResenas} reseñas)</span>
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#0b0d12] px-4 py-2 text-sm text-white/80">
+                <span className="text-primary font-medium">{(prof.calificacionPromedio ?? 0).toFixed(1)}</span>
+                <span className="text-white/50">({prof.cantidadResenas} reseñas)</span>
+              </div>
+              <FavoriteButton 
+                profesorId={id} 
+                size="md" 
+                variant="both"
+              />
             </div>
           </div>
 

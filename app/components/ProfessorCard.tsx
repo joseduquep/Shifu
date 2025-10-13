@@ -2,6 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
+import { FavoriteButtonSimple } from "./FavoriteButtonSimple"
 
 type ProfessorCardProps = {
   id: string
@@ -78,13 +79,18 @@ export function ProfessorCard({
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 flex items-center justify-between gap-3">
         <Link
           href={`/profesores/${id}`}
           className="inline-flex items-center rounded-full bg-primary text-[#0b0d12] px-4 py-2 text-xs font-medium shadow-[0_0_0_2px_#0b0d12_inset] hover:opacity-90 transition"
         >
           Ver perfil
         </Link>
+        <FavoriteButtonSimple 
+          profesorId={id} 
+          size="sm" 
+          variant="icon"
+        />
       </div>
     </div>
   )
