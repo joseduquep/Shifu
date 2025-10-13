@@ -5,15 +5,28 @@ import { supabasePublic } from '@/lib/supabase/public-client'
 const ParamsSchema = z.object({ id: z.string().uuid() })
 
 type MateriaRow = { materia_id: string; nombre: string }
+
 type StatRow = {
 	profesor_id: string
 	calificacion_promedio: number | null
 	cantidad_resenas: number
 }
+
 type SerieRow = {
 	semestre_codigo: string
 	calificacion_promedio: number | string
 	cantidad_resenas: number
+}
+
+type ProfesorJoined = {
+	id: string
+	nombre_completo: string
+	bio: string | null
+	departamentos: {
+		id: string
+		nombre?: string
+		universidades?: { id: string; nombre?: string } | null
+	} | null
 }
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -38,6 +51,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 		return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 	}
 
+	const row = data as unknown as ProfesorJoined
+
 	// Stats
 	const { data: srow } = await supabasePublic
 		.from('v_profesores_estadisticas')
@@ -57,11 +72,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 		.order('semestre_codigo', { ascending: true })
 
 	return NextResponse.json({
-		id: data.id,
-		nombreCompleto: data.nombre_completo,
-		bio: data.bio ?? null,
-		departamento: data.departamentos?.[0]?.nombre ?? '',
-		universidad: data.departamentos?.[0]?.universidades?.[0]?.nombre ?? '',
+		id: row.id,
+		nombreCompleto: row.nombre_completo,
+		bio: row.bio ?? null,
+		departamento: row.departamentos?.nombre ?? '',
+		universidad: row.departamentos?.universidades?.nombre ?? '',
 		materias: ((materias as MateriaRow[] | null) ?? []).map((m) => ({ id: m.materia_id, nombre: m.nombre })),
 		calificacionPromedio: (srow as StatRow | null)?.calificacion_promedio ?? null,
 		cantidadResenas: (srow as StatRow | null)?.cantidad_resenas ?? 0,
