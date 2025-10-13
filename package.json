@@ -12,12 +12,16 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
     "@xenova/transformers": "^2.17.2",
     "next": "^15.5.3",
+    "next-auth": "^4.24.11",
+    "openai": "^6.3.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-hot-toast": "^2.6.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
