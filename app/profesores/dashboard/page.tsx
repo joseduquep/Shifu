@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import React from 'react'
 import { ProfessorCard } from '@/app/components/ProfessorCard'
 
 interface SemesterRecord {
@@ -62,6 +63,9 @@ export default function ProfesoresDashboardPage() {
 	const [selectedDepartamentoId, setSelectedDepartamentoId] = useState<string>('')
 	const [isNewProfile, setIsNewProfile] = useState<boolean>(false)
 	const [saveError, setSaveError] = useState<string>('')
+	type MateriaTag = { id?: string; nombre: string }
+	const [materiasDisponibles, setMateriasDisponibles] = useState<{ id: string; nombre: string }[]>([])
+	const [materiasSeleccionadas, setMateriasSeleccionadas] = useState<MateriaTag[]>([])
 
 	useEffect(() => {
         const load = async () => {
@@ -95,6 +99,33 @@ export default function ProfesoresDashboardPage() {
 			} catch {}
 		}
 		loadDeps()
+	}, [])
+
+	// Cargar materias disponibles (por departamento si está seleccionado; si no, todas)
+	useEffect(() => {
+		const loadMatsPerfil = async () => {
+			try {
+				const url = selectedDepartamentoId
+					? `/api/materias?departamentoId=${encodeURIComponent(selectedDepartamentoId)}`
+					: '/api/materias'
+				const res = await fetch(url)
+				const data = await res.json()
+				setMateriasDisponibles(Array.isArray(data) ? data : [])
+			} catch { setMateriasDisponibles([]) }
+		}
+		loadMatsPerfil()
+	}, [selectedDepartamentoId])
+
+	// Cargar materias activas actuales del profesor
+	useEffect(() => {
+		const loadMats = async () => {
+			try {
+				const res = await fetch('/api/profesores/me/materias')
+				const json = await res.json()
+				setMateriasSeleccionadas(Array.isArray(json.items) ? json.items.map((m: any) => ({ id: m.id, nombre: m.nombre })) : [])
+			} catch {}
+		}
+		loadMats()
 	}, [])
 
 	// Cargar materias cuando cambia el dep. del filtro
@@ -184,6 +215,23 @@ export default function ProfesoresDashboardPage() {
 				setSaveError(msg)
 				return
 			}
+			// Resolver materias: crear las que no existen y luego guardar vínculos activos
+			const ids: string[] = []
+			for (const tag of materiasSeleccionadas) {
+				if (tag.id) { ids.push(tag.id); continue }
+				const resMat = await fetch('/api/materias', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ nombre: tag.nombre, departamentoId: selectedDepartamentoId || undefined }),
+				})
+				const data = await resMat.json()
+				if (data?.id) ids.push(data.id)
+			}
+			await fetch('/api/profesores/me/materias', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ materiaIds: ids, departamentoId: selectedDepartamentoId || undefined })
+			})
 		} finally {
 			setIsSaving(false)
 		}
@@ -418,6 +466,19 @@ export default function ProfesoresDashboardPage() {
 								)}
 									</div>
 
+							{/* Materias activas (tag input con sugerencias) */}
+							<div>
+								<label className="block text-sm text-white/80">Materias activas</label>
+								<div className="mt-2">
+									<MateriasTagInput
+										values={materiasSeleccionadas}
+										onChange={setMateriasSeleccionadas}
+										departamentoId={selectedDepartamentoId || undefined}
+										placeholder="Escribe una materia y presiona Enter"
+									/>
+								</div>
+							</div>
+
 									<div>
 										<label
 											htmlFor="bio"
@@ -569,6 +630,122 @@ function Stars({ value }: { value: number }) {
 			<span className="sr-only">{value} de 5</span>
 		</div>
 	)
+}
+
+// Tag input de materias con sugerencias/autocreación
+function MateriasTagInput({
+    values,
+    onChange,
+    placeholder,
+    departamentoId,
+}: {
+    values: { id?: string; nombre: string }[]
+    onChange: (tags: { id?: string; nombre: string }[]) => void
+    placeholder?: string
+    departamentoId?: string
+}) {
+    const [input, setInput] = React.useState('')
+    const [suggestions, setSuggestions] = React.useState<{ id: string; nombre: string }[]>([])
+    const [open, setOpen] = React.useState(false)
+
+    React.useEffect(() => {
+        const q = input.trim()
+        if (!q) { setSuggestions([]); setOpen(false); return }
+        const ctrl = new AbortController()
+        const run = async () => {
+            try {
+                const res = await fetch(`/api/materias/suggest?q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
+                const data = await res.json()
+                setSuggestions(Array.isArray(data) ? data : [])
+                setOpen(true)
+            } catch { if (!ctrl.signal.aborted) setOpen(false) }
+        }
+        run()
+        return () => ctrl.abort()
+    }, [input])
+
+    const addById = (id: string, nombre: string) => {
+        const exists = values.some((v) => v.id === id)
+        if (exists) { setInput(''); setOpen(false); return }
+        onChange([...values, { id, nombre }])
+        setInput('')
+        setOpen(false)
+    }
+
+    const createOrUseByName = async (name: string) => {
+        const res = await fetch('/api/materias', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre: name, departamentoId }),
+        })
+        const data = await res.json()
+        if (data?.id) addById(data.id, data.nombre)
+    }
+
+    const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault()
+            const name = input.trim()
+            if (!name) return
+            const found = suggestions.find((s) => s.nombre.toLowerCase() === name.toLowerCase())
+            if (found) addById(found.id, found.nombre)
+            else await createOrUseByName(name)
+        }
+        if (e.key === 'Backspace' && !input) {
+            onChange(values.slice(0, -1))
+        }
+    }
+
+    const remove = (id?: string, nombre?: string) => {
+        if (id) onChange(values.filter((v) => v.id !== id))
+        else if (nombre) onChange(values.filter((v) => v.nombre !== nombre))
+    }
+
+    return (
+        <div className="rounded-xl border border-white/15 bg-[#0b0d12] p-2">
+            <div className="flex flex-wrap gap-2">
+                {values.map((tag, idx) => (
+                    <MateriaChip key={(tag.id ?? tag.nombre) + idx} id={tag.id} nombre={tag.nombre} onRemove={() => remove(tag.id, tag.nombre)} />
+                ))}
+                <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={placeholder}
+                    className="flex-1 min-w-40 bg-transparent outline-none text-white/90 placeholder:text-white/40"
+                />
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+                <button
+                    type="button"
+                    onClick={() => input.trim() && createOrUseByName(input.trim())}
+                    className="inline-flex items-center rounded-full bg-primary text-[#0b0d12] px-3 py-1.5 text-xs font-medium hover:opacity-90 transition disabled:opacity-60"
+                    disabled={!input.trim()}
+                >
+                    Agregar materia
+                </button>
+                <span className="text-xs text-white/50">La materia queda registrada para sugerencias y filtros.</span>
+            </div>
+            {open && suggestions.length > 0 && (
+                <div className="mt-2 max-h-48 overflow-auto rounded-lg border border-white/10 bg-[#121621]">
+                    {suggestions.map((s) => (
+                        <button key={s.id} className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/5" onMouseDown={() => addById(s.id, s.nombre)}>
+                            {s.nombre}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+function MateriaChip({ id, nombre, onRemove }: { id?: string; nombre: string; onRemove: () => void }) {
+    return (
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#0b0d12] px-3 py-1 text-sm text-white/80">
+            {nombre}
+            <button type="button" onClick={onRemove} className="text-white/50 hover:text-white">×</button>
+        </span>
+    )
 }
 
 function StarFull() {

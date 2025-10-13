@@ -60,12 +60,13 @@ export async function GET(req: NextRequest) {
 		query = query.ilike('nombre_completo', `%${q}%`)
 	}
 
-	// Filtro por materia activa: intersectar contra vista v_profesores_materias_activas
+	// Filtro por materia activa: intersectar contra relación activa
 	if (materiaId) {
 		const { data: pids, error: perr } = await supabasePublic
-			.from('v_profesores_materias_activas')
+			.from('profesores_materias')
 			.select('profesor_id')
 			.eq('materia_id', materiaId)
+			.eq('activo', true)
 		const allowed = Array.from(new Set((pids || []).map((r: any) => r.profesor_id)))
 		if (perr) {
 			return NextResponse.json({ error: perr.message }, { status: 500 })
