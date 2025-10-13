@@ -16,6 +16,15 @@ type SerieRow = {
 	cantidad_resenas: number
 }
 
+type ResenaRow = {
+	id: string
+	rating: number
+	comentario: string | null
+	semestre_codigo: string
+	anonimo: boolean
+	materias?: { id?: string; nombre?: string } | null
+}
+
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
 	const { id } = await ctx.params
 	const parsed = ParamsSchema.safeParse({ id })
@@ -56,6 +65,14 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 		.eq('profesor_id', id)
 		.order('semestre_codigo', { ascending: true })
 
+	// Reseñas públicas recientes
+	const { data: resenas } = await supabasePublic
+		.from('resenas')
+		.select('id, rating, comentario, semestre_codigo, anonimo, materias:materia_id ( id, nombre )')
+		.eq('profesor_id', id)
+		.order('created_at', { ascending: false })
+		.limit(20)
+
 	return NextResponse.json({
 		id: data.id,
 		nombreCompleto: data.nombre_completo,
@@ -66,5 +83,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 		calificacionPromedio: (srow as StatRow | null)?.calificacion_promedio ?? null,
 		cantidadResenas: (srow as StatRow | null)?.cantidad_resenas ?? 0,
 		ratingsPorSemestre: ((series as SerieRow[] | null) ?? []).map((s) => ({ semestre: s.semestre_codigo, rating: Number(s.calificacion_promedio) })),
+		resenasPublicas: ((resenas as ResenaRow[] | null) ?? []).map((r) => ({
+			id: r.id,
+			rating: Number(r.rating),
+			comentario: r.comentario,
+			semestre: r.semestre_codigo,
+			anonimo: r.anonimo,
+			materia: r.materias?.nombre ?? null,
+		}))
 	})
 }

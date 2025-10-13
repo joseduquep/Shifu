@@ -1,94 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-
-// Datos de ejemplo (mismos ids que el dashboard)
-const DEMO = [
-  {
-    id: "1",
-    name: "Ana María Gómez",
-    department: "Matemáticas",
-    university: "EAFIT",
-    rating: 4.7,
-    reviewsCount: 128,
-    materias: ["Cálculo", "Estadística"],
-    bio:
-      "Profesora con enfoque práctico en fundamentos de cálculo y estadística aplicada.",
-    semesterRatings: [
-      { semester: "2023-1", rating: 4.5 },
-      { semester: "2023-2", rating: 4.6 },
-      { semester: "2024-1", rating: 4.7 },
-      { semester: "2024-2", rating: 4.7 },
-    ],
-  },
-  {
-    id: "2",
-    name: "Carlos Pérez",
-    department: "Ingeniería de Sistemas",
-    university: "EAFIT",
-    rating: 4.3,
-    reviewsCount: 86,
-    materias: ["Algoritmos", "Arquitectura"],
-    bio: "Interesado en diseño de sistemas escalables y complejidad algorítmica.",
-    semesterRatings: [
-      { semester: "2023-1", rating: 4.0 },
-      { semester: "2023-2", rating: 4.1 },
-      { semester: "2024-1", rating: 4.2 },
-      { semester: "2024-2", rating: 4.3 },
-    ],
-  },
-  {
-    id: "3",
-    name: "Laura Restrepo",
-    department: "Humanidades",
-    university: "EAFIT",
-    rating: 4.9,
-    reviewsCount: 204,
-    materias: ["Escritura", "Ética"],
-    bio: "Énfasis en pensamiento crítico y escritura académica efectiva.",
-    semesterRatings: [
-      { semester: "2023-1", rating: 4.8 },
-      { semester: "2023-2", rating: 4.9 },
-      { semester: "2024-1", rating: 4.9 },
-      { semester: "2024-2", rating: 4.9 },
-    ],
-  },
-  {
-    id: "4",
-    name: "Julián Ramírez",
-    department: "Finanzas",
-    university: "EAFIT",
-    rating: 4.5,
-    reviewsCount: 73,
-    materias: ["Econometría", "Mercados"],
-    bio: "Analiza mercados con herramientas cuantitativas aplicadas.",
-    semesterRatings: [
-      { semester: "2023-1", rating: 4.3 },
-      { semester: "2023-2", rating: 4.4 },
-      { semester: "2024-1", rating: 4.5 },
-      { semester: "2024-2", rating: 4.5 },
-    ],
-  },
-  {
-    id: "5",
-    name: "María Fernanda Toro",
-    department: "Diseño",
-    university: "EAFIT",
-    rating: 4.2,
-    reviewsCount: 51,
-    materias: ["UX", "Prototipado"],
-    bio: "Explora experiencias centradas en el usuario y procesos de prototipado.",
-    semesterRatings: [
-      { semester: "2023-1", rating: 4.0 },
-      { semester: "2023-2", rating: 4.1 },
-      { semester: "2024-1", rating: 4.2 },
-      { semester: "2024-2", rating: 4.2 },
-    ],
-  },
-] as const
-
-function getProfessor(id: string) {
-  return DEMO.find((p) => p.id === id)
-}
+import { headers } from "next/headers"
 
 export default async function ProfessorProfile({
   params,
@@ -96,8 +8,15 @@ export default async function ProfessorProfile({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const prof = getProfessor(id)
-  if (!prof) return notFound()
+  const hdrs = await headers()
+  const envBase = process.env.NEXT_PUBLIC_BASE_URL
+  const proto = hdrs.get("x-forwarded-proto") || "http"
+  const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "localhost:3000"
+  const runtimeBase = `${proto}://${host}`
+  const baseUrl = envBase && /^https?:\/\//.test(envBase) ? envBase : runtimeBase
+  const res = await fetch(`${baseUrl}/api/profesores/${id}`, { cache: "no-store" })
+  if (!res.ok) return notFound()
+  const prof = await res.json()
 
   return (
     <main className="min-h-dvh bg-[#0b0d12] text-primary font-sans">
@@ -116,7 +35,7 @@ export default async function ProfessorProfile({
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="size-14 rounded-2xl bg-[#0b0d12] grid place-items-center border border-white/10 text-white/80 text-lg font-medium">
-                {prof.name
+                {prof.nombreCompleto
                   .split(" ")
                   .filter(Boolean)
                   .slice(0, 2)
@@ -125,17 +44,17 @@ export default async function ProfessorProfile({
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-medium text-white">
-                  {prof.name}
+                  {prof.nombreCompleto}
                 </h1>
                 <div className="mt-1 text-sm text-white/60">
-                  {prof.department} · {prof.university}
+                  {prof.departamento} · {prof.universidad}
                 </div>
               </div>
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#0b0d12] px-4 py-2 text-sm text-white/80">
-              <span className="text-primary font-medium">{prof.rating.toFixed(1)}</span>
-              <span className="text-white/50">({prof.reviewsCount} reseñas)</span>
+              <span className="text-primary font-medium">{(prof.calificacionPromedio ?? 0).toFixed(1)}</span>
+              <span className="text-white/50">({prof.cantidadResenas} reseñas)</span>
             </div>
           </div>
 
@@ -143,18 +62,18 @@ export default async function ProfessorProfile({
             <p className="mt-6 text-white/80 leading-relaxed">{prof.bio}</p>
           )}
 
-          {prof.materias?.length ? (
+          {Array.isArray(prof.materias) && prof.materias.length ? (
             <div className="mt-8">
               <div className="text-xs uppercase tracking-widest text-white/60">
                 Materias activas
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {prof.materias.map((m) => (
+                {prof.materias.map((m: any) => (
                   <span
-                    key={m}
+                    key={m.id ?? m}
                     className="inline-flex items-center rounded-full border border-white/10 bg-[#0b0d12] px-2.5 py-1 text-xs text-white/70"
                   >
-                    {m}
+                    {typeof m === 'string' ? m : m.nombre}
                   </span>
                 ))}
               </div>
@@ -171,17 +90,17 @@ export default async function ProfessorProfile({
             </div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-4xl font-medium text-primary">
-                {prof.rating.toFixed(1)}
+                {(prof.calificacionPromedio ?? 0).toFixed(1)}
               </span>
               <span className="text-sm text-white/60">
-                ({prof.reviewsCount} reseñas)
+                ({prof.cantidadResenas} reseñas)
               </span>
             </div>
             <div className="mt-4 flex gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <StarIcon
                   key={star}
-                  className={star <= Math.round(prof.rating) ? "text-primary" : "text-white/20"}
+                  className={star <= Math.round(prof.calificacionPromedio ?? 0) ? "text-primary" : "text-white/20"}
                 />
               ))}
             </div>
@@ -192,23 +111,44 @@ export default async function ProfessorProfile({
             <div className="text-xs uppercase tracking-widest text-white/60">
               Evolución por semestre
             </div>
-            {prof.semesterRatings && (
+            {Array.isArray(prof.ratingsPorSemestre) && (
               <div className="mt-4">
-                <RatingChart data={prof.semesterRatings} />
+                <RatingChart data={prof.ratingsPorSemestre} />
               </div>
             )}
           </div>
         </div>
 
-        {/* Sección de reseñas (placeholder) */}
+        {/* Reseñas públicas */}
         <div className="mt-6 rounded-3xl border border-white/10 bg-[#121621] p-6 md:p-8">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-white">Reseñas recientes</h2>
-            <span className="text-xs text-white/60">Próximamente</span>
+            <span className="text-xs text-white/60">Públicas</span>
           </div>
-          <div className="mt-4 text-white/60 text-sm">
-            Aún no hay reseñas disponibles en esta demo.
-          </div>
+          {Array.isArray((prof as any).resenasPublicas) && (prof as any).resenasPublicas.length > 0 ? (
+            <ul className="mt-4 space-y-4">
+              {(prof as any).resenasPublicas.map((r: any) => (
+                <li key={r.id} className="rounded-2xl border border-white/10 bg-[#0b0d12] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-white/80">
+                      <StarIcon className="text-primary" />
+                      <span className="text-sm font-medium">{Number(r.rating).toFixed(1)}</span>
+                      <span className="text-xs text-white/50">{r.semestre}</span>
+                      {r.materia && <span className="text-xs text-white/50">· {r.materia}</span>}
+                    </div>
+                    {r.anonimo && (
+                      <span className="text-[10px] uppercase tracking-widest text-white/40">Anónimo</span>
+                    )}
+                  </div>
+                  {r.comentario && (
+                    <p className="mt-3 text-sm text-white/80 whitespace-pre-line">{r.comentario}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-4 text-white/60 text-sm">Aún no hay reseñas.</div>
+          )}
         </div>
       </section>
     </main>

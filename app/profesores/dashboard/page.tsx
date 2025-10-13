@@ -1,6 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { ProfessorCard } from '@/app/components/ProfessorCard'
 
 interface SemesterRecord {
 	semester: string
@@ -8,7 +10,7 @@ interface SemesterRecord {
 	rating: number
 }
 
-type TabKey = 'perfil' | 'calificacion' | 'historico'
+type TabKey = 'explorar' | 'perfil' | 'calificacion' | 'historico'
 
 const SEMESTERS: SemesterRecord[] = [
 	{
@@ -37,17 +39,115 @@ const SEMESTERS: SemesterRecord[] = [
 ]
 
 export default function ProfesoresDashboardPage() {
-	const [activeTab, setActiveTab] = useState<TabKey>('perfil')
+    const [activeTab, setActiveTab] = useState<TabKey>('explorar')
 	const [isSaving, setIsSaving] = useState(false)
 
-	// Perfil (estado local simulado)
-	const [name, setName] = useState('Nombre del Profesor')
-	const [email, setEmail] = useState('profesor@eafit.edu.co')
-	const [department, setDepartment] = useState('Departamento Académico')
-	const [bio, setBio] = useState(
-		'Breve descripción profesional, líneas de trabajo e intereses '
-		+ 'académicos.',
-	)
+	// Explorer (datos compartidos con estudiante)
+	const [query, setQuery] = useState('')
+	const [departamentosFiltro, setDepartamentosFiltro] = useState<{ id: string; nombre: string }[]>([])
+	const [materiasFiltro, setMateriasFiltro] = useState<{ id: string; nombre: string }[]>([])
+	const [semestresFiltro, setSemestresFiltro] = useState<{ codigo: string }[]>([])
+	const [selectedDepartamentoIdFiltro, setSelectedDepartamentoIdFiltro] = useState('')
+	const [selectedMateriaIdFiltro, setSelectedMateriaIdFiltro] = useState('')
+	const [selectedSemestreCodigoFiltro, setSelectedSemestreCodigoFiltro] = useState('')
+	const [profesores, setProfesores] = useState<any[]>([])
+	const [loadingProfes, setLoadingProfes] = useState(false)
+
+	// Perfil (cargado desde API)
+    const [name, setName] = useState('')
+    const [email, setEmail] = useState('')
+	const [department, setDepartment] = useState('')
+    const [bio, setBio] = useState('')
+	const [departamentos, setDepartamentos] = useState<{ id: string; nombre: string }[]>([])
+	const [selectedDepartamentoId, setSelectedDepartamentoId] = useState<string>('')
+	const [isNewProfile, setIsNewProfile] = useState<boolean>(false)
+	const [saveError, setSaveError] = useState<string>('')
+
+	useEffect(() => {
+        const load = async () => {
+            try {
+                const res = await fetch('/api/profesores/me', { cache: 'no-store' })
+				if (res.status === 404) {
+					setIsNewProfile(true)
+					return
+				}
+				if (!res.ok) return
+                const data = await res.json()
+                setName(data.nombreCompleto || '')
+                setEmail(data.email || '')
+				setDepartment(data.departamento || '')
+				setSelectedDepartamentoId(data.departamentoId || '')
+                setBio(data.bio || '')
+				setIsNewProfile(false)
+            } catch {}
+        }
+        load()
+    }, [])
+
+	// Catálogo de departamentos
+	useEffect(() => {
+		const loadDeps = async () => {
+			try {
+				const res = await fetch('/api/departamentos')
+				const data = await res.json()
+				setDepartamentos(Array.isArray(data) ? data : [])
+				setDepartamentosFiltro(Array.isArray(data) ? data : [])
+			} catch {}
+		}
+		loadDeps()
+	}, [])
+
+	// Cargar materias cuando cambia el dep. del filtro
+	useEffect(() => {
+		const loadMats = async () => {
+			try {
+				const url = selectedDepartamentoIdFiltro ? `/api/materias?departamentoId=${encodeURIComponent(selectedDepartamentoIdFiltro)}` : '/api/materias'
+				const res = await fetch(url)
+				const data = await res.json()
+				setMateriasFiltro(Array.isArray(data) ? data : [])
+			} catch { setMateriasFiltro([]) }
+		}
+		loadMats()
+	}, [selectedDepartamentoIdFiltro])
+
+	// Cargar semestres
+	useEffect(() => {
+		const loadSems = async () => {
+			try {
+				const res = await fetch('/api/semestres')
+				const data = await res.json()
+				setSemestresFiltro(Array.isArray(data) ? data : [])
+			} catch {}
+		}
+		loadSems()
+	}, [])
+
+	// Cargar lista inicial sin filtros
+	useEffect(() => {
+		aplicarFiltros()
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
+
+	const aplicarFiltros = async () => {
+		setLoadingProfes(true)
+		try {
+			const params = new URLSearchParams()
+			if (selectedDepartamentoIdFiltro) params.set('departamentoId', selectedDepartamentoIdFiltro)
+			if (selectedMateriaIdFiltro) params.set('materiaId', selectedMateriaIdFiltro)
+			if (selectedSemestreCodigoFiltro) params.set('semestreCodigo', selectedSemestreCodigoFiltro)
+			const res = await fetch(`/api/profesores?${params.toString()}`)
+			const json = await res.json()
+			setProfesores(Array.isArray(json.items) ? json.items : [])
+		} catch { setProfesores([]) }
+		finally { setLoadingProfes(false) }
+	}
+
+	const limpiarFiltros = async () => {
+		setSelectedDepartamentoIdFiltro('')
+		setSelectedMateriaIdFiltro('')
+		setSelectedSemestreCodigoFiltro('')
+		await aplicarFiltros()
+	}
 
 	// Calificación general (simulada a partir del histórico)
 	const overallRating = useMemo(() => {
@@ -64,10 +164,26 @@ export default function ProfesoresDashboardPage() {
 	async function handleSaveProfile(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault()
 		setIsSaving(true)
+		setSaveError('')
 		try {
-			// TODO: integrar API para actualizar perfil del profesor
-			await new Promise((r) => setTimeout(r, 700))
-			console.log({ name, email, department, bio })
+			if (isNewProfile && !selectedDepartamentoId) {
+				setSaveError('Selecciona un departamento para crear tu perfil')
+				return
+			}
+            const res = await fetch('/api/profesores/me', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ nombreCompleto: name, email, bio, departamentoId: selectedDepartamentoId || undefined }),
+            })
+			if (!res.ok) {
+				let msg = 'No se pudo guardar'
+				try {
+					const j = await res.json()
+					if (j?.error) msg = j.error
+				} catch {}
+				setSaveError(msg)
+				return
+			}
 		} finally {
 			setIsSaving(false)
 		}
@@ -83,10 +199,23 @@ export default function ProfesoresDashboardPage() {
 						</h1>
 					</header>
 
-					<nav className="mt-8">
+                    <nav className="mt-8">
 						<div
 							className="inline-flex rounded-lg border border-white/15 p-1 bg-white/5"
 						>
+                            <button
+                                type="button"
+                                aria-pressed={activeTab === 'explorar'}
+                                onClick={() => setActiveTab('explorar')}
+                                className={
+                                    'px-3 py-2 text-sm rounded-md transition ' +
+                                    (activeTab === 'explorar'
+                                        ? 'bg-primary text-[#0b0d12]'
+                                        : 'text-white/80 hover:text-white')
+                                }
+                            >
+                                Explorar
+                            </button>
 							<button
 								type="button"
 								aria-pressed={activeTab === 'perfil'}
@@ -129,7 +258,101 @@ export default function ProfesoresDashboardPage() {
 						</div>
 					</nav>
 
-					<div className="mt-8 space-y-8">
+                    <div className="mt-8 space-y-8">
+                        {activeTab === 'explorar' && (
+                            <section className="rounded-2xl border border-white/15 p-6 bg-white/5">
+                                <div className="flex items-center justify-between gap-4">
+                                    <h2 className="text-xl font-medium">Buscar profesores</h2>
+                                    <Link
+                                        href="/dashboard"
+                                        className="inline-flex items-center rounded-full bg-primary text-[#0b0d12] px-4 py-2 text-sm font-medium hover:opacity-90 transition"
+                                    >
+                                        Ver como estudiante
+                                    </Link>
+                                </div>
+
+                                <div className="mt-4">
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={query}
+                                            onChange={(e) => setQuery(e.target.value)}
+                                            placeholder="Buscar por nombre, departamento o materia…"
+                                            className="w-full h-12 rounded-full bg-[#0b0d12] text-white/90 placeholder:text-white/40 border border-white/15 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+                                    <div className="md:col-span-2">
+                                        <select
+                                            value={selectedDepartamentoIdFiltro}
+                                            onChange={(e) => { setSelectedDepartamentoIdFiltro(e.target.value); setSelectedMateriaIdFiltro('') }}
+                                            className="w-full h-11 rounded-xl bg-[#0b0d12] text-white/90 border border-white/15 px-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                        >
+                                            <option value="">Programa/Departamento</option>
+                                            {departamentosFiltro.map((d) => (
+                                                <option key={d.id} value={d.id}>{d.nombre}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <select
+                                            value={selectedMateriaIdFiltro}
+                                            onChange={(e) => setSelectedMateriaIdFiltro(e.target.value)}
+                                            className="w-full h-11 rounded-xl bg-[#0b0d12] text-white/90 border border-white/15 px-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                        >
+                                            <option value="">Materia</option>
+                                            {materiasFiltro.map((m) => (
+                                                <option key={m.id} value={m.id}>{m.nombre}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <select
+                                            value={selectedSemestreCodigoFiltro}
+                                            onChange={(e) => setSelectedSemestreCodigoFiltro(e.target.value)}
+                                            className="w-full h-11 rounded-xl bg-[#0b0d12] text-white/90 border border-white/15 px-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                        >
+                                            <option value="">Semestre</option>
+                                            {semestresFiltro.map((s) => (
+                                                <option key={s.codigo} value={s.codigo}>{s.codigo}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-5 flex items-center gap-3">
+                                        <button onClick={aplicarFiltros} className="inline-flex items-center rounded-full bg-primary text-[#0b0d12] px-4 py-2 text-sm font-medium hover:opacity-90 transition">Aplicar filtros</button>
+                                        <button onClick={limpiarFiltros} className="inline-flex items-center rounded-full border border-white/15 text-white px-4 py-2 text-sm font-medium hover:bg-white/5 transition">Quitar filtros</button>
+                                        {loadingProfes && <span className="text-white/60 text-sm">Cargando…</span>}
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                    {profesores
+                                        .filter((p) => {
+                                            const q = query.trim().toLowerCase()
+                                            if (!q) return true
+                                            const arr = [p.nombreCompleto, p.departamento, p.universidad, ...(p.materias || [])]
+                                            return arr.filter(Boolean).some((f: any) => String(f).toLowerCase().includes(q))
+                                        })
+                                        .map((p) => (
+                                            <ProfessorCard
+                                                key={p.id}
+                                                id={p.id}
+                                                name={p.nombreCompleto}
+                                                department={p.departamento}
+                                                university={p.universidad}
+                                                rating={p.calificacionPromedio ?? undefined}
+                                                reviewsCount={p.cantidadResenas}
+                                                materias={p.materias}
+                                            />
+                                        ))}
+                                </div>
+                                {!loadingProfes && profesores.length === 0 && (
+                                    <div className="mt-6 text-sm text-white/60">Sin resultados.</div>
+                                )}
+                            </section>
+                        )}
 						{activeTab === 'perfil' && (
 							<section
 								aria-label="Perfil del profesor"
@@ -172,20 +395,27 @@ export default function ProfesoresDashboardPage() {
 									</div>
 
 									<div>
-										<label
-											htmlFor="department"
-											className="block text-sm text-white/80"
-										>
-											Departamento
-										</label>
-										<input
-											id="department"
-											type="text"
-											required
-											value={department}
-											onChange={(e) => setDepartment(e.target.value)}
-											className="mt-1 w-full h-11 rounded-xl bg-[#0b0d12] text-white/90 placeholder:text-white/40 border border-white/15 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50"
-										/>
+								<label htmlFor="department" className="block text-sm text-white/80">
+									Departamento {isNewProfile ? '(requerido)' : ''}
+								</label>
+								<select
+									id="department"
+									value={selectedDepartamentoId}
+									onChange={(e) => {
+										setSelectedDepartamentoId(e.target.value)
+										const sel = departamentos.find((d) => d.id === e.target.value)
+										setDepartment(sel?.nombre || '')
+									}}
+									className="mt-1 w-full h-11 rounded-xl bg-[#0b0d12] text-white/90 border border-white/15 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50"
+								>
+									<option value="">Selecciona un departamento</option>
+									{departamentos.map((d) => (
+										<option key={d.id} value={d.id}>{d.nombre}</option>
+									))}
+								</select>
+								{saveError && isNewProfile && !selectedDepartamentoId && (
+									<div className="mt-1 text-xs text-red-300">{saveError}</div>
+								)}
 									</div>
 
 									<div>
@@ -204,10 +434,13 @@ export default function ProfesoresDashboardPage() {
 										/>
 									</div>
 
-									<div className="pt-2">
+							{saveError && !(!selectedDepartamentoId && isNewProfile) && (
+								<div className="text-sm text-red-300">{saveError}</div>
+							)}
+							<div className="pt-2">
 										<button
 											type="submit"
-											disabled={isSaving}
+									disabled={isSaving || (isNewProfile && !selectedDepartamentoId)}
 											className="h-11 px-4 inline-flex items-center justify-center rounded-xl bg-primary text-[#0b0d12] text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
 										>
 											{isSaving ? 'Guardando…' : 'Guardar cambios'}

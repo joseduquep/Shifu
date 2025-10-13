@@ -1,25 +1,12 @@
 "use client"
 
-import { useId, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
-// Demo data (aligned with dashboard/profesores ids)
-const PROFESSORS = [
-  { id: "1", name: "Ana María Gómez" },
-  { id: "2", name: "Carlos Pérez" },
-  { id: "3", name: "Laura Restrepo" },
-  { id: "4", name: "Julián Ramírez" },
-  { id: "5", name: "María Fernanda Toro" },
-] as const
+type SearchItem = { id: string; nombreCompleto: string }
 
-const SEMESTERS = [
-  "2023-1",
-  "2023-2",
-  "2024-1",
-  "2024-2",
-  "2025-1",
-] as const
+type Semestre = { codigo: string }
 
 export default function NewReviewPage() {
   const router = useRouter()
@@ -27,41 +14,80 @@ export default function NewReviewPage() {
   const [professorId, setProfessorId] = useState("")
   const [query, setQuery] = useState("")
   const [rating, setRating] = useState(0)
-  const [semester, setSemester] = useState<string>(SEMESTERS[0])
+  const [semestres, setSemestres] = useState<Semestre[]>([])
+  const [semester, setSemester] = useState<string>("")
   const [comment, setComment] = useState("")
   const [anonymous, setAnonymous] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [focused, setFocused] = useState(false)
+  const [results, setResults] = useState<SearchItem[]>([])
+  const [loading, setLoading] = useState(false)
 
-  const selectedProfessor = useMemo(
-    () => PROFESSORS.find((p) => p.id === professorId) || null,
-    [professorId]
-  )
+  const selectedProfessor = useMemo(() => results.find((p) => p.id === professorId) || null, [professorId, results])
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return []
-    return PROFESSORS.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8)
+  // Buscar en API cuando el usuario escribe
+  useEffect(() => {
+    const q = query.trim()
+    if (!q) {
+      setResults([])
+      return
+    }
+    const ctrl = new AbortController()
+    const run = async () => {
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/profesores?q=${encodeURIComponent(q)}&limit=8`, { signal: ctrl.signal })
+        const json = await res.json()
+        const items = Array.isArray(json.items) ? json.items : []
+        setResults(items.map((it: any) => ({ id: it.id, nombreCompleto: it.nombreCompleto })))
+      } catch (_) {
+        if (!ctrl.signal.aborted) setResults([])
+      } finally {
+        if (!ctrl.signal.aborted) setLoading(false)
+      }
+    }
+    run()
+    return () => ctrl.abort()
   }, [query])
 
   const canSubmit = useMemo(() => {
     return Boolean(professorId) && rating >= 0.5 && rating <= 5 && Boolean(semester)
   }, [professorId, rating, semester])
 
+  // Cargar semestres reales
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/semestres')
+        const data = await res.json()
+        const list = Array.isArray(data) ? data : []
+        setSemestres(list)
+        if (list.length && !semester) setSemester(list[list.length - 1].codigo)
+      } catch (_) {}
+    }
+    load()
+  }, [])
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!canSubmit) return
     setIsSubmitting(true)
     try {
-      // Simular persistencia de la reseña
-      await new Promise((r) => setTimeout(r, 600))
-      console.log("Nueva reseña", {
-        professorId,
-        rating,
-        semester,
-        anonymous,
-        comment,
+      // Persistir reseña real
+      const res = await fetch('/api/resenas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profesorId: professorId,
+          rating,
+          semestreCodigo: semester,
+          comentario: comment || null,
+          anonimo: anonymous,
+        }),
       })
+      if (!res.ok) {
+        throw new Error('No se pudo guardar la reseña')
+      }
       // Navegar al perfil del profesor
       router.push(`/profesores/${professorId}`)
     } finally {
@@ -109,29 +135,29 @@ export default function NewReviewPage() {
 
               {focused && query.trim() && (
                 <div className="absolute z-10 mt-2 w-full max-h-64 overflow-auto rounded-xl border border-white/10 bg-[#121621] p-1">
-                  {filtered.length > 0 ? (
-                    filtered.map((p) => (
+                  {results.length > 0 ? (
+                    results.map((p) => (
                       <button
                         key={p.id}
                         type="button"
                         onMouseDown={() => {
                           setProfessorId(p.id)
-                          setQuery(p.name)
+                          setQuery(p.nombreCompleto)
                         }}
                         className="w-full text-left px-3 py-2 rounded-lg text-white/80 hover:bg-white/5"
                       >
-                        {p.name}
+                        {p.nombreCompleto}
                       </button>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-sm text-white/60">Sin resultados</div>
+                    <div className="px-3 py-2 text-sm text-white/60">{loading ? "Buscando…" : "Sin resultados"}</div>
                   )}
                 </div>
               )}
             </div>
             {selectedProfessor && (
               <div className="mt-2 text-xs text-white/60">
-                Seleccionado: <span className="text-white/80">{selectedProfessor.name}</span>
+                Seleccionado: <span className="text-white/80">{selectedProfessor.nombreCompleto}</span>
               </div>
             )}
           </div>
@@ -159,9 +185,12 @@ export default function NewReviewPage() {
               onChange={(e) => setSemester(e.target.value)}
               className="w-full h-12 rounded-xl bg-[#0b0d12] text-white/90 border border-white/15 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              {SEMESTERS.map((s) => (
-                <option key={s} value={s} className="bg-[#0b0d12]">
-                  {s}
+              <option value="">
+                Selecciona un semestre
+              </option>
+              {semestres.map((s) => (
+                <option key={s.codigo} value={s.codigo} className="bg-[#0b0d12]">
+                  {s.codigo}
                 </option>
               ))}
             </select>

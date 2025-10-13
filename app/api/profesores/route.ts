@@ -6,6 +6,8 @@ const QuerySchema = z.object({
 	q: z.string().trim().optional(),
 	departamentoId: z.string().uuid().optional(),
 	universidadId: z.string().uuid().optional(),
+	materiaId: z.string().uuid().optional(),
+	semestreCodigo: z.string().trim().regex(/^[0-9]{4}-(1|2)$/).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(20),
 	offset: z.coerce.number().int().min(0).default(0),
 })
@@ -32,7 +34,7 @@ export async function GET(req: NextRequest) {
 	if (!parsed.success) {
 		return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 })
 	}
-	const { q, departamentoId, universidadId, limit, offset } = parsed.data
+	const { q, departamentoId, universidadId, materiaId, semestreCodigo, limit, offset } = parsed.data
 
 	// Construimos consulta SQL para aprovechar vistas y filtros
 	// Nota: usamos RPC vía SQL raw con execute de supabase-js v2 (PostgREST: rpc o embed). Aquí usamos SQL con .from + .select cuando es posible.
@@ -56,6 +58,38 @@ export async function GET(req: NextRequest) {
 	}
 	if (q) {
 		query = query.ilike('nombre_completo', `%${q}%`)
+	}
+
+	// Filtro por materia activa: intersectar contra vista v_profesores_materias_activas
+	if (materiaId) {
+		const { data: pids, error: perr } = await supabasePublic
+			.from('v_profesores_materias_activas')
+			.select('profesor_id')
+			.eq('materia_id', materiaId)
+		const allowed = Array.from(new Set((pids || []).map((r: any) => r.profesor_id)))
+		if (perr) {
+			return NextResponse.json({ error: perr.message }, { status: 500 })
+		}
+		if (allowed.length === 0) {
+			return NextResponse.json({ items: [], count: 0 })
+		}
+		query = query.in('id', allowed)
+	}
+
+	// Filtro por semestre: profesores con reseñas en ese semestre (usamos vista de ratings por semestre)
+	if (semestreCodigo) {
+		const { data: sids, error: serr } = await supabasePublic
+			.from('v_profesores_ratings_por_semestre')
+			.select('profesor_id')
+			.eq('semestre_codigo', semestreCodigo)
+		const allowed = Array.from(new Set((sids || []).map((r: any) => r.profesor_id)))
+		if (serr) {
+			return NextResponse.json({ error: serr.message }, { status: 500 })
+		}
+		if (allowed.length === 0) {
+			return NextResponse.json({ items: [], count: 0 })
+		}
+		query = query.in('id', allowed)
 	}
 
 	const { data, error } = await query
