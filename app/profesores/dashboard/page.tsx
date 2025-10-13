@@ -1,20 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/contexts/auth-context'
 
-function sleep(ms: number) { return new Promise((res) => setTimeout(res, ms)) }
+export default function ProfesoresDashboardPage() {
+    const router = useRouter()
+    const pathname = usePathname()
+    const supabase = useMemo(() => createClient(), [])
+    const { user, loading } = useAuth()
 
-export default function DiagnosticoGuardarProfesor() {
+    // UI state
     const [isSaving, setIsSaving] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [isEditMode, setIsEditMode] = useState(false)
-    // const [logs, setLogs] = useState<string[]>([])
-
-    // const addLog = (line: string) => {
-    //     console.log(line)
-    //     setLogs((s) => [...s, `[${new Date().toISOString()}] ${line}`])
-    // }
 
     // datos del profesor
     const [name, setName] = useState('')
@@ -22,165 +22,151 @@ export default function DiagnosticoGuardarProfesor() {
     const [department, setDepartment] = useState('')
     const [bio, setBio] = useState('')
 
-    // supabase client
-    const supabase = createClient()
-
-    // Cargar datos del profesor al inicio
+    // Guard: si terminó de cargar el contexto y no hay usuario, redirigir al login
     useEffect(() => {
-        async function loadProfesorData() {
-            setIsLoading(true)
-            try {
-                // Obtener usuario actual
-                const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-                if (authError || !user) {
-                    console.error("No hay usuario autenticado")
-                    return
-                }
-
-                // Consultar datos del profesor
-                const { data, error } = await supabase
-                    .from('profesores')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single()
-
-                if (error) {
-                    console.error("Error al cargar datos del profesor:", error)
-                    return
-                }
-
-                if (data) {
-                    setName(data.nombre_completo || '')
-                    setEmail(data.email || '')
-                    setBio(data.bio || '')
-
-                    // Cargar departamento si existe
-                    if (data.departamento_id) {
-                        const { data: deptData } = await supabase
-                            .from('departamentos')
-                            .select('nombre')
-                            .eq('id', data.departamento_id)
-                            .single()
-
-                        if (deptData) {
-                            setDepartment(deptData.nombre)
-                        }
-                    }
-                }
-            } finally {
-                setIsLoading(false)
-            }
+        if (!loading && !user) {
+            const redirect = encodeURIComponent(pathname || '/profesores/dashboard')
+            router.replace(`/profesores/login?redirect=${redirect}`)
         }
+    }, [loading, user, pathname, router])
 
-        loadProfesorData()
-    }, [])
+    const loadProfesorData = useCallback(async () => {
+        if (!user) return
+        setIsLoading(true)
+        try {
+            // Carga base
+            const { data, error } = await supabase
+                .from('profesores')
+                .select('*')
+                .eq('id', user.id)
+                .single()
+
+            if (error) {
+                console.error('Error al cargar datos del profesor:', error)
+                setName('')
+                setEmail('')
+                setBio('')
+                setDepartment('')
+                return
+            }
+
+            if (data) {
+                setName(data.nombre_completo || '')
+                setEmail(data.email || '')
+                setBio(data.bio || '')
+
+                if (data.departamento_id) {
+                    const { data: deptData } = await supabase
+                        .from('departamentos')
+                        .select('nombre')
+                        .eq('id', data.departamento_id)
+                        .single()
+                    setDepartment(deptData?.nombre || '')
+                } else {
+                    setDepartment('')
+                }
+            }
+        } finally {
+            setIsLoading(false)
+        }
+    }, [supabase, user])
+
+    // Carga inicial + reintentos cuando el token se refresca o volvemos a la pestaña
+    useEffect(() => {
+        let mounted = true
+        if (user) loadProfesorData()
+
+        const { data: sub } = supabase.auth.onAuthStateChange((evt) => {
+            if (!mounted) return
+            if (evt === 'TOKEN_REFRESHED' || evt === 'SIGNED_IN') {
+                loadProfesorData()
+            }
+            if (evt === 'SIGNED_OUT') {
+                setName('')
+                setEmail('')
+                setDepartment('')
+                setBio('')
+            }
+        })
+
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') loadProfesorData()
+        }
+        document.addEventListener('visibilitychange', onVisibility)
+
+        return () => {
+            mounted = false
+            sub.subscription.unsubscribe()
+            document.removeEventListener('visibilitychange', onVisibility)
+        }
+    }, [supabase, user, loadProfesorData])
 
     async function handleFormSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
 
-        // Si no estamos en modo edición, activarlo y salir
+        if (!user) {
+            const redirect = encodeURIComponent(pathname || '/profesores/dashboard')
+            router.replace(`/profesores/login?redirect=${redirect}`)
+            return
+        }
+
         if (!isEditMode) {
             setIsEditMode(true)
             return
         }
 
-        // De lo contrario, guardar cambios
         setIsSaving(true)
-        // setLogs([])
-
         try {
-            // addLog('🔎 Iniciando diagnóstico...')
-
-            // 1) verificar env vars
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-            const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-
-            // addLog(`SUPABASE_URL: ${supabaseUrl ? 'OK' : 'VACÍO'}`)
-            // addLog(`SUPABASE_KEY: ${supabaseKey ? 'OK' : 'VACÍO'}`)
-
-            if (!supabaseUrl || !supabaseKey) {
-                // addLog('❗ Las variables de entorno públicas están vacías. Revisa .env.local y reinicia Next.js.')
-                return
-            }
-
-            // 2) probar select usando supabase-js
-            // addLog('2) Probando select desde supabase-js (departamentos)...')
-            try {
-                const { data, error, status } = await supabase
-                    .from('departamentos')
-                    .select('id,nombre')
-                    .limit(1)
-
-                // addLog(`- supabase-js response status: ${status}`)
-                // if (error) {
-                //     addLog(`- supabase-js error: ${JSON.stringify(error)}`)
-                // } else {
-                //     addLog(`- supabase-js data: ${JSON.stringify(data)}`)
-                // }
-            } catch (err: any) {
-                // addLog(`- supabase-js threw: ${err?.message ?? String(err)}`)
-            }
-
-            // 3) probar fetch directo al endpoint REST (detecta CORS/headers/key)
-            // addLog('3) Probando fetch directo al REST endpoint /departamentos...')
-            const restUrl = `${supabaseUrl.replace(/\/$/, '')}/rest/v1/departamentos?select=id,nombre&limit=1`
-            // addLog(`- REST URL: ${restUrl}`)
-            try {
-                const resp = await fetch(restUrl, {
-                    method: 'GET',
-                    headers: {
-                        apikey: supabaseKey,
-                        Authorization: `Bearer ${supabaseKey}`,
-                        Prefer: 'return=minimal'
-                    }
-                })
-
-                // addLog(`- fetch status: ${resp.status}`)
-                const text = await resp.text()
-                // addLog(`- fetch body (truncated 1000 chars): ${text.slice(0, 1000)}`)
-            } catch (err: any) {
-                // addLog(`- fetch threw: ${err?.message ?? String(err)}`)
-            }
-
-            // 4) obtener usuario autenticado y luego intentar insertar profesor
-            // addLog('4) Intentando insertar profesor (timeout 30s)...')
-
-            // Obtener el usuario autenticado actual
-            const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-            if (authError || !user) {
-                // addLog(`❌ Error: No hay usuario autenticado. Debes iniciar sesión primero.`)
-                // addLog(`- Auth error: ${authError ? JSON.stringify(authError) : 'No hay usuario'}`)
-                return
-            }
-
-            // addLog(`- Usuario autenticado: ${user.id} (${user.email})`)
-
-            const insertPromise = supabase
+            const { error } = await supabase
                 .from('profesores')
                 .upsert([{
-                    id: user.id, // Usar el ID del usuario autenticado
+                    id: user.id,
                     nombre_completo: name,
                     email,
                     bio,
-                    departamento_id: null
+                    departamento_id: null,
                 }])
                 .select()
 
-            const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_30s')), 30000))
-            try {
-                const res = await Promise.race([insertPromise, timeout]) as any
-                // addLog(`- insert result: ${JSON.stringify(res)}`)
-                setIsEditMode(false) // Volver al modo visualización después de guardar
-            } catch (err: any) {
-                // addLog(`- insert error: ${err?.message ?? String(err)}`)
-            }
-
-            // addLog('✅ Diagnóstico terminado.')
+            if (!error) setIsEditMode(false)
         } finally {
             setIsSaving(false)
         }
+    }
+
+    // Render: si el contexto sigue cargando muestra un loader corto
+    if (loading) {
+        return (
+            <main className="bg-[#0b0d12] text-primary font-sans">
+                <section className="min-h-[calc(100dvh-4rem)] px-6 py-10">
+                    <div className="mx-auto max-w-6xl">
+                        <div className="py-8 text-center text-white/70">
+                            <p>Cargando…</p>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        )
+    }
+
+    // Si no hay usuario (y ya no estamos loading), mostramos CTA en vez de spinner infinito
+    if (!user) {
+        const redirect = encodeURIComponent(pathname || '/profesores/dashboard')
+        return (
+            <main className="bg-[#0b0d12] text-primary font-sans">
+                <section className="min-h-[calc(100dvh-4rem)] px-6 py-10">
+                    <div className="mx-auto max-w-6xl text-center text-white/80">
+                        <p className="mb-4">Tu sesión ha finalizado.</p>
+                        <a
+                            href={`/profesores/login?redirect=${redirect}`}
+                            className="inline-block rounded-xl bg-primary text-[#0b0d12] px-4 py-2 text-sm font-medium hover:opacity-90 transition"
+                        >
+                            Ingresar
+                        </a>
+                    </div>
+                </section>
+            </main>
+        )
     }
 
     return (
@@ -188,9 +174,7 @@ export default function DiagnosticoGuardarProfesor() {
             <section className="min-h-[calc(100dvh-4rem)] px-6 py-10">
                 <div className="mx-auto max-w-6xl">
                     <header className="flex items-center justify-between">
-                        <h1 className="text-3xl md:text-4xl font-medium">
-                            Perfil de profesor
-                        </h1>
+                        <h1 className="text-3xl md:text-4xl font-medium">Perfil de profesor</h1>
                     </header>
 
                     <section
@@ -204,10 +188,7 @@ export default function DiagnosticoGuardarProfesor() {
                         ) : (
                             <form className="mt-6 space-y-4" onSubmit={handleFormSubmit}>
                                 <div>
-                                    <label
-                                        htmlFor="name"
-                                        className="block text-sm text-white/80"
-                                    >
+                                    <label htmlFor="name" className="block text-sm text-white/80">
                                         Nombre
                                     </label>
                                     <input
@@ -222,10 +203,7 @@ export default function DiagnosticoGuardarProfesor() {
                                 </div>
 
                                 <div>
-                                    <label
-                                        htmlFor="department"
-                                        className="block text-sm text-white/80"
-                                    >
+                                    <label htmlFor="department" className="block text-sm text-white/80">
                                         Departamento
                                     </label>
                                     <input
@@ -240,10 +218,7 @@ export default function DiagnosticoGuardarProfesor() {
                                 </div>
 
                                 <div>
-                                    <label
-                                        htmlFor="bio"
-                                        className="block text-sm text-white/80"
-                                    >
+                                    <label htmlFor="bio" className="block text-sm text-white/80">
                                         Bio
                                     </label>
                                     <textarea
@@ -268,17 +243,6 @@ export default function DiagnosticoGuardarProfesor() {
                             </form>
                         )}
                     </section>
-
-                    {/* Sección de logs comentada
-                    <section className="mt-8 rounded-2xl border border-white/15 p-6 bg-white/5">
-                        <h2 className="text-xl font-medium">Logs</h2>
-                        <div className="mt-4 bg-[#0b0d12] border border-white/15 p-4 rounded-xl max-h-[40vh] overflow-auto">
-                            {logs.map((l, i) => (
-                                <div key={i} className="text-xs font-mono mb-1 text-white/85">{l}</div>
-                            ))}
-                        </div>
-                    </section>
-                    */}
                 </div>
             </section>
         </main>

@@ -28,6 +28,10 @@ export function NavbarUserMenu() {
         )
     }
 
+    const isProfessor = profile?.role === 'professor'
+    const dashboardHref = isProfessor ? '/profesores/dashboard' : '/dashboard'
+    const dashboardLabel = isProfessor ? 'Perfil' : 'Dashboard'
+
     return (
         <div className="relative">
             <button
@@ -54,20 +58,19 @@ export function NavbarUserMenu() {
             {open && (
                 <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#10141d] p-2 text-sm">
                     <Link
-                        href={profile?.role === 'professor' ? '/profesores/dashboard' : '/dashboard'}
+                        href={dashboardHref}
                         className="block rounded-lg px-3 py-2 text-white/80 hover:bg-white/5 hover:text-white"
                         onClick={() => setOpen(false)}
                     >
-                        Dashboard
+                        {dashboardLabel}
                     </Link>
                     <button
                         onClick={async () => {
                             try {
                                 await signOut()
-                                setOpen(false) // Cierra el menú desplegable
+                                setOpen(false)
                             } catch (error) {
                                 console.error('Error al cerrar sesión:', error)
-                                // Aquí podrías mostrar un mensaje de error al usuario
                             }
                         }}
                         className="block w-full text-left rounded-lg px-3 py-2 text-white/80 hover:bg-white/5 hover:text-white"
