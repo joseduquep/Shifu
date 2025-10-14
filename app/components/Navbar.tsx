@@ -52,6 +52,11 @@ export function Navbar() {
                         </Link>
                     </div>
 
+                    {/* Favoritos */}
+                    <Link href="/favoritos" className="text-white/80 hover:text-white transition">
+                        Favoritos
+                    </Link>
+
                     {/* Acerca */}
                     <div className="relative" onMouseEnter={() => open("acerca")} onMouseLeave={scheduleClose}>
                         <Link href="/about" className="text-white/80 hover:text-white transition">
