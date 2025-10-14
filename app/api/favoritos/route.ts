@@ -2,6 +2,67 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createFavorito, deleteFavorito } from '@/lib/admin/dao/favoritos'
 import { FavoritoCreateSchema, FavoritoDeleteSchema } from '@/lib/admin/schemas/favoritos'
+import { supabaseAdmin } from '@/lib/supabase/admin-client'
+
+// Helper: get or create estudiante_id for the given auth user
+async function getOrCreateEstudianteIdFromAuthUser(authUserId: string): Promise<string | null> {
+  // 1) Read profile to get email/full_name metadata
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('id, email, full_name, epik_id')
+    .eq('id', authUserId)
+    .maybeSingle()
+
+  // 2) Detect if estudiantes.user_id column exists
+  const { data: userIdCol } = await supabaseAdmin
+    .from('information_schema.columns')
+    .select('column_name')
+    .eq('table_schema', 'public')
+    .eq('table_name', 'estudiantes')
+    .eq('column_name', 'user_id')
+    .maybeSingle()
+  const hasUserIdColumn = Boolean(userIdCol)
+
+  // 3) Try lookup by user_id if supported
+  if (hasUserIdColumn) {
+    const byUser = await supabaseAdmin
+      .from('estudiantes')
+      .select('id')
+      .eq('user_id', authUserId)
+      .maybeSingle()
+    if (byUser.data?.id) return byUser.data.id
+  }
+
+  // 4) Fallback: by email
+  if (profile?.email) {
+    const byEmail = await supabaseAdmin
+      .from('estudiantes')
+      .select('id')
+      .eq('email', profile.email)
+      .maybeSingle()
+    if (byEmail.data?.id) return byEmail.data.id
+  }
+
+  // 5) Create minimal estudiante
+  const insertPayload: Record<string, unknown> = {
+    nombres: profile?.full_name ?? 'Estudiante',
+    apellidos: '',
+    email: profile?.email ?? `${authUserId}@placeholder.local`,
+    epik_id: profile?.epik_id ?? authUserId,
+  }
+  if (hasUserIdColumn) insertPayload.user_id = authUserId
+
+  const { data: created, error: insertError } = await supabaseAdmin
+    .from('estudiantes')
+    .insert(insertPayload)
+    .select('id')
+    .single()
+  if (insertError) {
+    console.error('Error creating estudiante for user:', insertError)
+    return null
+  }
+  return created?.id ?? null
+}
 
 // GET /api/favoritos - Obtener favoritos del estudiante autenticado
 export async function GET() {
@@ -14,8 +75,11 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // CORREGIDO: Usar directamente user.id como estudiante_id
-    // porque estudiantes.id = auth.users.id según el diagrama
+    // Obtener/crear el estudiante_id real desde la tabla estudiantes
+    const estudianteId = await getOrCreateEstudianteIdFromAuthUser(user.id)
+    if (!estudianteId) {
+      return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
+    }
     
     // Obtener favoritos directamente sin función
     const { data: favoritosData, error: favoritosError } = await supabase
@@ -32,7 +96,7 @@ export async function GET() {
           )
         )
       `)
-      .eq('estudiante_id', user.id)
+      .eq('estudiante_id', estudianteId)
       .order('created_at', { ascending: false })
 
     if (favoritosError) {
@@ -83,12 +147,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'profesor_id es requerido' }, { status: 400 })
     }
 
-    // CORREGIDO: Usar directamente user.id como estudiante_id
-    // porque estudiantes.id = auth.users.id según el diagrama
+    // Obtener/crear el estudiante_id real desde la tabla estudiantes
+    const estudianteId = await getOrCreateEstudianteIdFromAuthUser(user.id)
+    if (!estudianteId) {
+      return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
+    }
 
     // Validar datos de entrada
     const validatedData = FavoritoCreateSchema.parse({
-      estudiante_id: user.id,
+      estudiante_id: estudianteId,
       profesor_id,
     })
 
@@ -131,12 +198,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'profesor_id es requerido' }, { status: 400 })
     }
 
-    // CORREGIDO: Usar directamente user.id como estudiante_id
-    // porque estudiantes.id = auth.users.id según el diagrama
+    // Obtener el estudiante_id real desde la tabla estudiantes
+    const estudianteId = await getEstudianteIdFromAuthUser(user.id)
+    if (!estudianteId) {
+      return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
+    }
 
     // Validar datos de entrada
     const validatedData = FavoritoDeleteSchema.parse({
-      estudiante_id: user.id,
+      estudiante_id: estudianteId,
       profesor_id,
     })
 
