@@ -23,7 +23,10 @@ export default function NewReviewPage() {
   const [results, setResults] = useState<SearchItem[]>([])
   const [loading, setLoading] = useState(false)
 
-  const selectedProfessor = useMemo(() => results.find((p) => p.id === professorId) || null, [professorId, results])
+  const selectedProfessor = useMemo(
+    () => results.find((p) => p.id === professorId) || null,
+    [professorId, results]
+  )
 
   // Buscar en API cuando el usuario escribe
   useEffect(() => {
@@ -36,11 +39,18 @@ export default function NewReviewPage() {
     const run = async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/profesores?q=${encodeURIComponent(q)}&limit=8`, { signal: ctrl.signal })
+        const res = await fetch(
+          `/api/profesores?q=${encodeURIComponent(q)}&limit=8`,
+          { signal: ctrl.signal }
+        )
         const json = await res.json()
-        const items = Array.isArray(json.items) ? json.items : []
-        setResults(items.map((it: any) => ({ id: it.id, nombreCompleto: it.nombreCompleto })))
-      } catch (_) {
+        const items = Array.isArray(json.items)
+          ? (json.items as SearchItem[])
+          : []
+        setResults(
+          items.map((it) => ({ id: it.id, nombreCompleto: it.nombreCompleto }))
+        )
+      } catch {
         if (!ctrl.signal.aborted) setResults([])
       } finally {
         if (!ctrl.signal.aborted) setLoading(false)
@@ -51,19 +61,22 @@ export default function NewReviewPage() {
   }, [query])
 
   const canSubmit = useMemo(() => {
-    return Boolean(professorId) && rating >= 0.5 && rating <= 5 && Boolean(semester)
+    return (
+      Boolean(professorId) && rating >= 0.5 && rating <= 5 && Boolean(semester)
+    )
   }, [professorId, rating, semester])
 
   // Cargar semestres reales
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch('/api/semestres')
+        const res = await fetch("/api/semestres")
         const data = await res.json()
-        const list = Array.isArray(data) ? data : []
+        const list = Array.isArray(data) ? (data as Semestre[]) : []
         setSemestres(list)
-        if (list.length && !semester) setSemester(list[list.length - 1].codigo)
-      } catch (_) {}
+        const last = list.length ? list[list.length - 1].codigo : ""
+        setSemester((prev) => prev || last)
+      } catch {}
     }
     load()
   }, [])
@@ -74,9 +87,9 @@ export default function NewReviewPage() {
     setIsSubmitting(true)
     try {
       // Persistir reseña real
-      const res = await fetch('/api/resenas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/resenas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           profesorId: professorId,
           rating,
@@ -86,7 +99,7 @@ export default function NewReviewPage() {
         }),
       })
       if (!res.ok) {
-        throw new Error('No se pudo guardar la reseña')
+        throw new Error("No se pudo guardar la reseña")
       }
       // Navegar al perfil del profesor
       router.push(`/profesores/${professorId}`)
@@ -112,7 +125,10 @@ export default function NewReviewPage() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {/* Profesor (buscador) */}
           <div>
-            <label htmlFor="prof-search" className="block text-xs uppercase tracking-widest text-white/60 mb-2">
+            <label
+              htmlFor="prof-search"
+              className="block text-xs uppercase tracking-widest text-white/60 mb-2"
+            >
               Buscar profesor
             </label>
             <div className="relative">
@@ -150,14 +166,19 @@ export default function NewReviewPage() {
                       </button>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-sm text-white/60">{loading ? "Buscando…" : "Sin resultados"}</div>
+                    <div className="px-3 py-2 text-sm text-white/60">
+                      {loading ? "Buscando…" : "Sin resultados"}
+                    </div>
                   )}
                 </div>
               )}
             </div>
             {selectedProfessor && (
               <div className="mt-2 text-xs text-white/60">
-                Seleccionado: <span className="text-white/80">{selectedProfessor.nombreCompleto}</span>
+                Seleccionado:{" "}
+                <span className="text-white/80">
+                  {selectedProfessor.nombreCompleto}
+                </span>
               </div>
             )}
           </div>
@@ -185,11 +206,13 @@ export default function NewReviewPage() {
               onChange={(e) => setSemester(e.target.value)}
               className="w-full h-12 rounded-xl bg-[#0b0d12] text-white/90 border border-white/15 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              <option value="">
-                Selecciona un semestre
-              </option>
+              <option value="">Selecciona un semestre</option>
               {semestres.map((s) => (
-                <option key={s.codigo} value={s.codigo} className="bg-[#0b0d12]">
+                <option
+                  key={s.codigo}
+                  value={s.codigo}
+                  className="bg-[#0b0d12]"
+                >
                   {s.codigo}
                 </option>
               ))}
@@ -307,7 +330,10 @@ function StarRating({
   }
 
   return (
-    <div className="flex items-center select-none" onMouseLeave={() => setHover(null)}>
+    <div
+      className="flex items-center select-none"
+      onMouseLeave={() => setHover(null)}
+    >
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
@@ -350,4 +376,3 @@ function Star({ fraction }: { fraction: 0 | 0.5 | 1 }) {
     </svg>
   )
 }
-
