@@ -30,7 +30,6 @@ export default function DashboardPage() {
     results: semanticResults,
     total: semanticTotal,
     isLoading: semanticLoading,
-    error: semanticError,
   } = useSemanticSearch()
 
   // Catálogos
@@ -325,7 +324,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filtered.map((p, index) => (
+          {filtered.map((p) => (
             <div key={p.id} className="relative">
               <ProfessorCard
                 id={p.id}
@@ -342,7 +341,13 @@ export default function DashboardPage() {
                 "relevanciaScore" in p && (
                   <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary">
                     <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-                    <span>{Math.round((p.relevanciaScore || 0) * 100)}%</span>
+                    <span>
+                      {Math.round(
+                        ((p as { relevanciaScore?: number }).relevanciaScore ??
+                          0) * 100
+                      )}
+                      %
+                    </span>
                   </div>
                 )}
             </div>

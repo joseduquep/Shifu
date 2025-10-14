@@ -1,26 +1,33 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createFavorito, deleteFavorito, getFavoritosEstudiante } from '@/lib/admin/dao/favoritos'
-import { FavoritoCreateSchema, FavoritoDeleteSchema } from '@/lib/admin/schemas/favoritos'
+import { NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
+import { createFavorito, deleteFavorito } from "@/lib/admin/dao/favoritos"
+import {
+  FavoritoCreateSchema,
+  FavoritoDeleteSchema,
+} from "@/lib/admin/schemas/favoritos"
 
 // GET /api/favoritos - Obtener favoritos del estudiante autenticado
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
-    
+
     // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
     // CORREGIDO: Usar directamente user.id como estudiante_id
     // porque estudiantes.id = auth.users.id según el diagrama
-    
+
     // Obtener favoritos directamente sin función
     const { data: favoritosData, error: favoritosError } = await supabase
-      .from('profesores_favoritos')
-      .select(`
+      .from("profesores_favoritos")
+      .select(
+        `
         id,
         profesor_id,
         created_at,
@@ -31,35 +38,39 @@ export async function GET(request: NextRequest) {
             universidades!inner(nombre)
           )
         )
-      `)
-      .eq('estudiante_id', user.id)
-      .order('created_at', { ascending: false })
+      `
+      )
+      .eq("estudiante_id", user.id)
+      .order("created_at", { ascending: false })
 
     if (favoritosError) {
-      console.error('Error obteniendo favoritos:', favoritosError)
+      console.error("Error obteniendo favoritos:", favoritosError)
       return NextResponse.json(
-        { error: 'Error obteniendo favoritos' },
+        { error: "Error obteniendo favoritos" },
         { status: 500 }
       )
     }
 
     // Transformar datos al formato esperado
-    const favoritos = favoritosData?.map(fav => ({
-      id: fav.id,
-      profesor_id: fav.profesor_id,
-      nombre_completo: fav.profesores.nombre_completo,
-      departamento: fav.profesores.departamentos.nombre,
-      universidad: fav.profesores.departamentos.universidades.nombre,
-      calificacion_promedio: 0, // Por ahora 0
-      cantidad_resenas: 0, // Por ahora 0
-      created_at: fav.created_at
-    })) || []
+    const favoritos =
+      favoritosData?.map((fav) => ({
+        id: fav.id,
+        profesor_id: fav.profesor_id,
+        nombre_completo: fav.profesores?.[0]?.nombre_completo ?? "",
+        departamento: fav.profesores?.[0]?.departamentos?.[0]?.nombre ?? "",
+        universidad:
+          fav.profesores?.[0]?.departamentos?.[0]?.universidades?.[0]?.nombre ??
+          "",
+        calificacion_promedio: 0, // Por ahora 0
+        cantidad_resenas: 0, // Por ahora 0
+        created_at: fav.created_at,
+      })) || []
 
     return NextResponse.json({ favoritos })
   } catch (error) {
-    console.error('Error obteniendo favoritos:', error)
+    console.error("Error obteniendo favoritos:", error)
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: "Error interno del servidor" },
       { status: 500 }
     )
   }
@@ -69,18 +80,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
-    
+
     // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
     const body = await request.json()
     const { profesor_id } = body
 
     if (!profesor_id) {
-      return NextResponse.json({ error: 'profesor_id es requerido' }, { status: 400 })
+      return NextResponse.json(
+        { error: "profesor_id es requerido" },
+        { status: 400 }
+      )
     }
 
     // CORREGIDO: Usar directamente user.id como estudiante_id
@@ -95,19 +112,22 @@ export async function POST(request: NextRequest) {
     // Crear favorito
     const favorito = await createFavorito(validatedData)
 
-    return NextResponse.json({ 
-      message: 'Profesor agregado a favoritos',
-      favorito 
+    return NextResponse.json({
+      message: "Profesor agregado a favoritos",
+      favorito,
     })
   } catch (error) {
-    console.error('Error agregando favorito:', error)
-    
-    if (error instanceof Error && error.message.includes('duplicate key')) {
-      return NextResponse.json({ error: 'El profesor ya está en favoritos' }, { status: 409 })
+    console.error("Error agregando favorito:", error)
+
+    if (error instanceof Error && error.message.includes("duplicate key")) {
+      return NextResponse.json(
+        { error: "El profesor ya está en favoritos" },
+        { status: 409 }
+      )
     }
-    
+
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: "Error interno del servidor" },
       { status: 500 }
     )
   }
@@ -117,18 +137,24 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createClient()
-    
+
     // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
     const body = await request.json()
     const { profesor_id } = body
 
     if (!profesor_id) {
-      return NextResponse.json({ error: 'profesor_id es requerido' }, { status: 400 })
+      return NextResponse.json(
+        { error: "profesor_id es requerido" },
+        { status: 400 }
+      )
     }
 
     // CORREGIDO: Usar directamente user.id como estudiante_id
@@ -143,19 +169,22 @@ export async function DELETE(request: NextRequest) {
     // Eliminar favorito
     const favorito = await deleteFavorito(validatedData)
 
-    return NextResponse.json({ 
-      message: 'Profesor eliminado de favoritos',
-      favorito 
+    return NextResponse.json({
+      message: "Profesor eliminado de favoritos",
+      favorito,
     })
   } catch (error) {
-    console.error('Error eliminando favorito:', error)
-    
-    if (error instanceof Error && error.message.includes('No rows')) {
-      return NextResponse.json({ error: 'Favorito no encontrado' }, { status: 404 })
+    console.error("Error eliminando favorito:", error)
+
+    if (error instanceof Error && error.message.includes("No rows")) {
+      return NextResponse.json(
+        { error: "Favorito no encontrado" },
+        { status: 404 }
+      )
     }
-    
+
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: "Error interno del servidor" },
       { status: 500 }
     )
   }
