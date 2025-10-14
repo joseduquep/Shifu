@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createFavorito, deleteFavorito, getFavoritosEstudiante } from '@/lib/admin/dao/favoritos'
+import { createFavorito, deleteFavorito } from '@/lib/admin/dao/favoritos'
 import { FavoritoCreateSchema, FavoritoDeleteSchema } from '@/lib/admin/schemas/favoritos'
 
 // GET /api/favoritos - Obtener favoritos del estudiante autenticado
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
     

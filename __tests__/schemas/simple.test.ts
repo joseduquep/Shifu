@@ -138,7 +138,7 @@ describe('Operaciones de Filtrado', () => {
 			{ id: '4', nombre: 'Ana María' }
 		]
 		
-		const filtrarPorNombre = (profesores: any[], query: string) => {
+		const filtrarPorNombre = (profesores: Array<{ id: string; nombre: string }>, query: string) => {
 			return profesores.filter(p => 
 				p.nombre.toLowerCase().includes(query.toLowerCase())
 			)
@@ -157,7 +157,7 @@ describe('Operaciones de Filtrado', () => {
 			{ id: '3', nombre: 'ana maría' }
 		]
 		
-		const filtrarPorNombre = (profesores: any[], query: string) => {
+		const filtrarPorNombre = (profesores: Array<{ id: string; nombre: string }>, query: string) => {
 			return profesores.filter(p => 
 				p.nombre.toLowerCase().includes(query.toLowerCase())
 			)
@@ -173,7 +173,7 @@ describe('Operaciones de Filtrado', () => {
 			{ id: '2', nombre: 'María García' }
 		]
 		
-		const filtrarPorNombre = (profesores: any[], query: string) => {
+		const filtrarPorNombre = (profesores: Array<{ id: string; nombre: string }>, query: string) => {
 			if (!query.trim()) return []
 			return profesores.filter(p => 
 				p.nombre.toLowerCase().includes(query.toLowerCase())

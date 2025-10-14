@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { headers } from "next/headers"
 import { FavoriteButton } from "@/app/components/FavoriteButton"
+import { ShareProfileButton } from "@/app/components/ShareProfileButton"
 
 export default async function ProfessorProfile({
   params,
@@ -18,6 +19,18 @@ export default async function ProfessorProfile({
   const res = await fetch(`${baseUrl}/api/profesores/${id}`, { cache: "no-store" })
   if (!res.ok) return notFound()
   const prof = await res.json()
+
+  // Obtener resumen generado por IA
+  let resumenIA = null
+  try {
+    const resumenRes = await fetch(`${baseUrl}/api/profesores/${id}/resumen`, { cache: "no-store" })
+    if (resumenRes.ok) {
+      const resumenData = await resumenRes.json()
+      resumenIA = resumenData.resumen
+    }
+  } catch (error) {
+    console.error('Error obteniendo resumen:', error)
+  }
 
   return (
     <main className="min-h-dvh bg-[#0b0d12] text-primary font-sans">
@@ -40,7 +53,7 @@ export default async function ProfessorProfile({
                   .split(" ")
                   .filter(Boolean)
                   .slice(0, 2)
-                  .map((p) => p[0]?.toUpperCase())
+                  .map((p: string) => p[0]?.toUpperCase())
                   .join("")}
               </div>
               <div>
@@ -54,21 +67,35 @@ export default async function ProfessorProfile({
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#0b0d12] px-4 py-2 text-sm text-white/80">
-                <span className="text-primary font-medium">{(prof.calificacionPromedio ?? 0).toFixed(1)}</span>
-                <span className="text-white/50">({prof.cantidadResenas} reseñas)</span>
-              </div>
+              <ShareProfileButton profesorId={id} nombreProfesor={prof.nombreCompleto} />
               <FavoriteButton 
                 profesorId={id} 
                 size="md" 
                 variant="both"
               />
             </div>
-          </div>
+            </div>
 
-          {prof.bio && (
-            <p className="mt-6 text-white/80 leading-relaxed">{prof.bio}</p>
-          )}
+            {/* Resumen generado por IA */}
+            {resumenIA && (
+              <div className="mt-6 p-4 rounded-2xl bg-primary/10 border border-primary/20">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                    <svg className="w-3 h-3 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-primary mb-1">Resumen Profesional</h3>
+                    <p className="text-white/90 text-sm leading-relaxed">{resumenIA}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {prof.bio && (
+              <p className="mt-6 text-white/80 leading-relaxed">{prof.bio}</p>
+            )}
 
           {Array.isArray(prof.materias) && prof.materias.length ? (
             <div className="mt-8">
@@ -89,75 +116,29 @@ export default async function ProfessorProfile({
           ) : null}
         </div>
 
-        {/* Widgets de estadísticas */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Widget de calificación promedio */}
-          <div className="rounded-2xl border border-white/10 bg-[#121621] p-6">
+        {/* Materias que imparte */}
+        {Array.isArray(prof.materias) && prof.materias.length > 0 && (
+          <div className="mt-8 rounded-2xl border border-white/10 bg-[#121621] p-6">
             <div className="text-xs uppercase tracking-widest text-white/60">
-              Calificación promedio
+              Materias que imparte
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-4xl font-medium text-primary">
-                {(prof.calificacionPromedio ?? 0).toFixed(1)}
-              </span>
-              <span className="text-sm text-white/60">
-                ({prof.cantidadResenas} reseñas)
-              </span>
-            </div>
-            <div className="mt-4 flex gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <StarIcon
-                  key={star}
-                  className={star <= Math.round(prof.calificacionPromedio ?? 0) ? "text-primary" : "text-white/20"}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Widget de evolución por semestre */}
-          <div className="rounded-2xl border border-white/10 bg-[#121621] p-6">
-            <div className="text-xs uppercase tracking-widest text-white/60">
-              Evolución por semestre
-            </div>
-            {Array.isArray(prof.ratingsPorSemestre) && (
-              <div className="mt-4">
-                <RatingChart data={prof.ratingsPorSemestre} />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Reseñas públicas */}
-        <div className="mt-6 rounded-3xl border border-white/10 bg-[#121621] p-6 md:p-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-white">Reseñas recientes</h2>
-            <span className="text-xs text-white/60">Públicas</span>
-          </div>
-          {Array.isArray((prof as any).resenasPublicas) && (prof as any).resenasPublicas.length > 0 ? (
-            <ul className="mt-4 space-y-4">
-              {(prof as any).resenasPublicas.map((r: any) => (
-                <li key={r.id} className="rounded-2xl border border-white/10 bg-[#0b0d12] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-white/80">
-                      <StarIcon className="text-primary" />
-                      <span className="text-sm font-medium">{Number(r.rating).toFixed(1)}</span>
-                      <span className="text-xs text-white/50">{r.semestre}</span>
-                      {r.materia && <span className="text-xs text-white/50">· {r.materia}</span>}
+            <div className="mt-4 space-y-3">
+              {prof.materias.map((materia: any, index: number) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-[#0b0d12]">
+                  <div>
+                    <div className="text-white font-medium">{materia.nombre || materia}</div>
+                    <div className="text-xs text-white/60 mt-1">
+                      {materia.departamento ? `Departamento de ${materia.departamento}` : prof.departamento}
                     </div>
-                    {r.anonimo && (
-                      <span className="text-[10px] uppercase tracking-widest text-white/40">Anónimo</span>
-                    )}
                   </div>
-                  {r.comentario && (
-                    <p className="mt-3 text-sm text-white/80 whitespace-pre-line">{r.comentario}</p>
-                  )}
-                </li>
+                  <div className="text-xs text-white/40">
+                    {materia.departamento || prof.departamento}
+                  </div>
+                </div>
               ))}
-            </ul>
-          ) : (
-            <div className="mt-4 text-white/60 text-sm">Aún no hay reseñas.</div>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   )
@@ -182,6 +163,7 @@ function ArrowLeftIcon() {
   )
 }
 
+// Eliminado: StarIcon ya no es necesario sin calificaciones
 function StarIcon({ className = "" }: { className?: string }) {
   return (
     <svg

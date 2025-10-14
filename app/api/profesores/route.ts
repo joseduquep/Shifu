@@ -17,7 +17,7 @@ type MateriaRow = { materia_id: string; nombre: string }
 
 type MateriaActivaRow = { profesor_id: string; materia_id: string; nombre: string }
 
-type StatsRow = { profesor_id: string; calificacion_promedio: number | null; cantidad_resenas: number }
+// Eliminado: StatsRow ya no es necesario sin reseñas
 
 type ProfesorRow = {
 	id: string
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
 			.select('profesor_id')
 			.eq('materia_id', materiaId)
 			.eq('activo', true)
-		const allowed = Array.from(new Set((pids || []).map((r: any) => r.profesor_id)))
+		const allowed = Array.from(new Set((pids || []).map((r: { profesor_id: string }) => r.profesor_id)))
 		if (perr) {
 			return NextResponse.json({ error: perr.message }, { status: 500 })
 		}
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 			.from('v_profesores_ratings_por_semestre')
 			.select('profesor_id')
 			.eq('semestre_codigo', semestreCodigo)
-		const allowed = Array.from(new Set((sids || []).map((r: any) => r.profesor_id)))
+		const allowed = Array.from(new Set((sids || []).map((r: { profesor_id: string }) => r.profesor_id)))
 		if (serr) {
 			return NextResponse.json({ error: serr.message }, { status: 500 })
 		}
@@ -115,32 +115,17 @@ export async function GET(req: NextRequest) {
 		}
 	}
 
-	// Estadísticas por profesor
-	const stats = new Map<string, { calificacion_promedio: number | null; cantidad_resenas: number }>()
-	if (ids.length) {
-		const { data: srows } = await supabasePublic
-			.from('v_profesores_estadisticas')
-			.select('profesor_id, calificacion_promedio, cantidad_resenas')
-			.in('profesor_id', ids)
-		for (const r of ((srows as StatsRow[] | null) ?? [])) {
-			stats.set(r.profesor_id, {
-				calificacion_promedio: r.calificacion_promedio,
-				cantidad_resenas: r.cantidad_resenas,
-			})
-		}
-	}
+	// Eliminado: Ya no necesitamos estadísticas de reseñas
 
 	const rows: ProfesorRow[] = (data ?? []) as ProfesorRow[]
 	const out = rows.map((row) => {
-		const st = stats.get(row.id) || { calificacion_promedio: null, cantidad_resenas: 0 }
 		return {
 			id: row.id,
 			nombreCompleto: row.nombre_completo,
 			departamento: row.departamentos?.nombre ?? '',
 			universidad: row.departamentos?.universidades?.nombre ?? '',
 			materias: (materiasPorProfesor.get(row.id) || []).map((m) => m.nombre),
-			calificacionPromedio: st.calificacion_promedio,
-			cantidadResenas: st.cantidad_resenas,
+			// Eliminado: calificacionPromedio y cantidadResenas
 		}
 	})
 

@@ -15,8 +15,6 @@ type ApiProfesor = {
   departamento: string
   universidad?: string
   materias: string[]
-  calificacionPromedio: number | null
-  cantidadResenas: number
 }
 
 export default function DashboardPage() {
@@ -29,8 +27,7 @@ export default function DashboardPage() {
     clearResults: clearSemanticResults,
     results: semanticResults,
     total: semanticTotal,
-    isLoading: semanticLoading,
-    error: semanticError
+    isLoading: semanticLoading
   } = useSemanticSearch()
 
   // Catálogos
@@ -62,7 +59,7 @@ export default function DashboardPage() {
         const [deps, sems] = await Promise.all([depsRes.json(), semRes.json()])
         setDepartamentos(deps || [])
         setSemestres(sems || [])
-      } catch (e) {
+      } catch {
         // noop: mantener vacíos si falla
       }
     }
@@ -79,7 +76,7 @@ export default function DashboardPage() {
         const res = await fetch(url)
         const data = await res.json()
         setMaterias(data || [])
-      } catch (e) {
+      } catch {
         setMaterias([])
       }
     }
@@ -98,7 +95,7 @@ export default function DashboardPage() {
         const res = await fetch(`/api/profesores?${params.toString()}`)
         const json = await res.json()
         setProfesores(Array.isArray(json.items) ? json.items : [])
-      } catch (e) {
+      } catch {
         setProfesores([])
       } finally {
         setLoading(false)
@@ -118,18 +115,16 @@ export default function DashboardPage() {
 
   const filtered = useMemo(() => {
     // Si hay query y búsqueda semántica está habilitada, usar resultados semánticos
-    if (query.trim() && useSemanticSearchEnabled && semanticResults.length > 0) {
-      return semanticResults.map(result => ({
-        id: result.id,
-        nombreCompleto: result.nombreCompleto,
-        departamento: result.departamento,
-        universidad: result.universidad,
-        materias: result.materias || [],
-        calificacionPromedio: result.calificacionPromedio,
-        cantidadResenas: result.cantidadResenas,
-        relevanciaScore: result.relevanciaScore
-      }))
-    }
+        if (query.trim() && useSemanticSearchEnabled && semanticResults.length > 0) {
+          return semanticResults.map(result => ({
+            id: result.id,
+            nombreCompleto: result.nombreCompleto,
+            departamento: result.departamento,
+            universidad: result.universidad,
+            materias: result.materias || [],
+            relevanciaScore: result.relevanciaScore
+          }))
+        }
     
     // Búsqueda tradicional por palabras clave
     const q = query.trim().toLowerCase()
@@ -285,15 +280,13 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filtered.map((p, index) => (
+            {filtered.map((p) => (
             <div key={p.id} className="relative">
               <ProfessorCard
                 id={p.id}
                 name={p.nombreCompleto}
                 department={p.departamento}
                 university={p.universidad}
-                rating={p.calificacionPromedio ?? undefined}
-                reviewsCount={p.cantidadResenas}
                 materias={p.materias}
               />
               {/* Indicador de relevancia semántica */}

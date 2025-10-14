@@ -10,8 +10,6 @@ type FavoritoWithProfessor = {
   nombre_completo: string
   departamento: string
   universidad: string
-  calificacion_promedio: number
-  cantidad_resenas: number
   created_at: string
 }
 
@@ -134,20 +132,8 @@ export default function FavoritosPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-white/80 mb-4">
-                  {favorito.calificacion_promedio > 0 ? (
-                    <>
-                      <StarIcon className="text-primary" />
-                      <span className="text-sm font-medium">
-                        {favorito.calificacion_promedio.toFixed(1)}
-                      </span>
-                      <span className="text-xs text-white/50">
-                        ({favorito.cantidad_resenas} reseñas)
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-xs text-white/50">Sin calificaciones</span>
-                  )}
+                <div className="text-xs text-white/60 mb-4">
+                  {favorito.departamento} · {favorito.universidad}
                 </div>
 
                 <div className="flex items-center justify-between gap-3">

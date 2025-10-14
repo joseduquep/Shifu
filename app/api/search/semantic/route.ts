@@ -9,8 +9,6 @@ type ProfesorConEmbedding = {
   universidad: string
   bio?: string
   materias?: string[]
-  calificacionPromedio: number | null
-  cantidadResenas: number
   embedding?: number[]
   relevanciaScore?: number
 }
@@ -63,7 +61,7 @@ export async function POST(request: NextRequest) {
         prof.departamentos.nombre,
         prof.departamentos.universidades.nombre,
         prof.bio || '',
-        ...(prof.profesores_materias || []).map((pm: any) => pm.materias?.nombre || '').filter(Boolean)
+        ...(prof.profesores_materias || []).map((pm: { materias?: { nombre?: string } }) => pm.materias?.nombre || '').filter(Boolean)
       ].join(' ').trim()
 
       if (!textoProfesor) continue
@@ -74,10 +72,6 @@ export async function POST(request: NextRequest) {
         
         // Calcular similitud coseno
         const relevanciaScore = cosineSimilarity(queryEmbedding, profesorEmbedding)
-        
-        // Por ahora no tenemos reseñas, usar valores por defecto
-        const calificacionPromedio = null
-        const cantidadResenas = 0
 
         profesoresConRelevancia.push({
           id: prof.id,
@@ -85,9 +79,7 @@ export async function POST(request: NextRequest) {
           departamento: prof.departamentos.nombre,
           universidad: prof.departamentos.universidades.nombre,
           bio: prof.bio,
-          materias: prof.profesores_materias?.map((pm: any) => pm.materias?.nombre).filter(Boolean) || [],
-          calificacionPromedio,
-          cantidadResenas,
+          materias: prof.profesores_materias?.map((pm: { materias?: { nombre?: string } }) => pm.materias?.nombre).filter(Boolean) || [],
           relevanciaScore
         })
       } catch (error) {

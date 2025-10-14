@@ -5,10 +5,10 @@ export async function middleware(request: NextRequest) {
     const { supabaseResponse, user } = await updateSession(request)
 
     const path = request.nextUrl.pathname
-    const isAuthPage =
-        path.startsWith('/login') ||
-        path.startsWith('/register') ||
-        path.startsWith('/profesores/login')
+    // const isAuthPage =
+    //     path.startsWith('/login') ||
+    //     path.startsWith('/register') ||
+    //     path.startsWith('/profesores/login')
 
     // Ya NO redirigimos automáticamente desde páginas de auth si hay sesión.
     // if (user && isAuthPage) { ... }  <-- Eliminado

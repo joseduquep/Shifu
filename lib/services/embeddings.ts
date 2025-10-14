@@ -1,6 +1,7 @@
 import { pipeline } from '@xenova/transformers'
 
 // Cache para el modelo de embeddings
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let embeddingPipeline: any = null
 
 /**

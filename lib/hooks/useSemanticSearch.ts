@@ -7,8 +7,6 @@ export type SemanticSearchResult = {
   universidad: string
   bio?: string
   materias?: string[]
-  calificacionPromedio: number | null
-  cantidadResenas: number
   relevanciaScore?: number
 }
 

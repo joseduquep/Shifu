@@ -3,14 +3,13 @@
 import React from "react"
 import Link from "next/link"
 import { FavoriteButtonSimple } from "./FavoriteButtonSimple"
+import { ShareProfileButton } from "./ShareProfileButton"
 
 type ProfessorCardProps = {
   id: string
   name: string
   department: string
   university?: string
-  rating?: number
-  reviewsCount?: number
   materias?: string[]
 }
 
@@ -28,8 +27,6 @@ export function ProfessorCard({
   name,
   department,
   university,
-  rating,
-  reviewsCount,
   materias = [],
 }: ProfessorCardProps) {
   return (
@@ -47,18 +44,9 @@ export function ProfessorCard({
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-2 text-white/80">
-        {typeof rating === "number" ? (
-          <>
-            <StarIcon className="text-primary" />
-            <span className="text-sm font-medium">{rating.toFixed(1)}</span>
-            {typeof reviewsCount === "number" && (
-              <span className="text-xs text-white/50">({reviewsCount} reseñas)</span>
-            )}
-          </>
-        ) : (
-          <span className="text-xs text-white/50">Sin calificaciones</span>
-        )}
+      <div className="mt-4 text-xs text-white/60">
+        {department}
+        {university ? ` · ${university}` : ""}
       </div>
 
       {materias.length > 0 && (
@@ -86,28 +74,23 @@ export function ProfessorCard({
         >
           Ver perfil
         </Link>
-        <FavoriteButtonSimple 
-          profesorId={id} 
-          size="sm" 
-          variant="icon"
-        />
+        <div className="flex items-center gap-2">
+          <ShareProfileButton 
+            profesorId={id} 
+            nombreProfesor={name}
+            size="sm" 
+            variant="icon"
+          />
+          <FavoriteButtonSimple 
+            profesorId={id} 
+            size="sm" 
+            variant="icon"
+          />
+        </div>
       </div>
     </div>
   )
 }
 
-function StarIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
-      <path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.786 1.402 8.169L12 18.896l-7.336 3.87 1.402-8.169L.132 9.211l8.2-1.193L12 .587z" />
-    </svg>
-  )
-}
+// Eliminado: StarIcon ya no es necesario sin calificaciones
 
