@@ -4,9 +4,10 @@ import { supabasePublic } from '@/lib/supabase/public-client'
 
 const ParamsSchema = z.object({ id: z.string().uuid() })
 
-type MateriaRow = { 
+type MateriaRow = {
   materia_id: string
   materia_nombre: string
+  materia_codigo: string | null
   departamento_id: string
   departamento_nombre: string
 }
@@ -22,7 +23,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 	const { data, error } = await supabasePublic
 		.from('profesores')
 		.select(
-			'id, nombre_completo, bio, departamentos:departamento_id ( id, nombre, universidades:universidad_id ( id, nombre ) )'
+			'id, nombre_completo, email, bio, created_at, departamentos:departamento_id ( id, nombre, universidades:universidad_id ( id, nombre ) )'
 		)
 		.eq('id', id)
 		.single()
@@ -37,7 +38,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 	// Obtener materias activas del profesor con información del departamento
 	const { data: materias } = await supabasePublic
 		.from('v_profesores_materias_activas')
-		.select('materia_id, materia_nombre, departamento_id, departamento_nombre')
+		.select('materia_id, materia_nombre, materia_codigo, departamento_id, departamento_nombre')
 		.eq('profesor_id', id)
 
 	// Eliminado: Stats, series y reseñas ya no son necesarios
@@ -45,14 +46,17 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 	return NextResponse.json({
 		id: data.id,
 		nombreCompleto: data.nombre_completo,
+		email: data.email ?? null,
+		miembroDesde: data.created_at,
 		bio: data.bio ?? null,
 		departamento: data.departamentos?.nombre ?? '',
 		universidad: data.departamentos?.universidades?.nombre ?? '',
-		materias: ((materias as MateriaRow[] | null) ?? []).map((m) => ({ 
-			id: m.materia_id, 
+		materias: ((materias as MateriaRow[] | null) ?? []).map((m) => ({
+			id: m.materia_id,
 			nombre: m.materia_nombre,
+			codigo: m.materia_codigo,
 			departamento: m.departamento_nombre,
-			departamento_id: m.departamento_id
+			departamento_id: m.departamento_id,
 		})),
 		// Eliminado: calificacionPromedio, cantidadResenas, ratingsPorSemestre, resenasPublicas
 	})

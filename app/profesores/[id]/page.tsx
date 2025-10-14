@@ -97,6 +97,22 @@ export default async function ProfessorProfile({
               <p className="mt-6 text-white/80 leading-relaxed">{prof.bio}</p>
             )}
 
+            {/* Información adicional */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-2xl border border-white/10 bg-[#121621] p-4">
+                <div className="text-xs uppercase tracking-widest text-white/60">Correo</div>
+                <div className="mt-1 text-white/80 break-words">{prof.email ?? 'No disponible'}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-[#121621] p-4">
+                <div className="text-xs uppercase tracking-widest text-white/60">Miembro desde</div>
+                <div className="mt-1 text-white/80">{prof.miembroDesde ? new Date(prof.miembroDesde).toLocaleDateString() : 'No disponible'}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-[#121621] p-4">
+                <div className="text-xs uppercase tracking-widest text-white/60">Departamento</div>
+                <div className="mt-1 text-white/80">{prof.departamento}</div>
+              </div>
+            </div>
+
           {Array.isArray(prof.materias) && prof.materias.length ? (
             <div className="mt-8">
               <div className="text-xs uppercase tracking-widest text-white/60">
@@ -108,7 +124,7 @@ export default async function ProfessorProfile({
                     key={m.id ?? m}
                     className="inline-flex items-center rounded-full border border-white/10 bg-[#0b0d12] px-2.5 py-1 text-xs text-white/70"
                   >
-                    {typeof m === 'string' ? m : m.nombre}
+                    {typeof m === 'string' ? m : `${m.nombre}${m.codigo ? ` · ${m.codigo}` : ''}`}
                   </span>
                 ))}
               </div>
@@ -126,7 +142,7 @@ export default async function ProfessorProfile({
               {prof.materias.map((materia: any, index: number) => (
                 <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-[#0b0d12]">
                   <div>
-                    <div className="text-white font-medium">{materia.nombre || materia}</div>
+                    <div className="text-white font-medium">{materia.nombre || materia}{materia.codigo ? ` · ${materia.codigo}` : ''}</div>
                     <div className="text-xs text-white/60 mt-1">
                       {materia.departamento ? `Departamento de ${materia.departamento}` : prof.departamento}
                     </div>
