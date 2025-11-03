@@ -47,7 +47,14 @@ export default async function ProfessorProfile({
 
         <div className="mt-6 rounded-3xl border border-white/10 bg-[#121621] p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
+            {prof.fotografia ? (
+              <img
+                src={prof.fotografia}
+                alt={prof.nombreCompleto}
+                className="size-14 rounded-2xl object-cover border border-white/10"
+              />
+            ) : (
               <div className="size-14 rounded-2xl bg-[#0b0d12] grid place-items-center border border-white/10 text-white/80 text-lg font-medium">
                 {prof.nombreCompleto
                   .split(" ")
@@ -56,6 +63,7 @@ export default async function ProfessorProfile({
                   .map((p: string) => p[0]?.toUpperCase())
                   .join("")}
               </div>
+            )}
               <div>
                 <h1 className="text-2xl md:text-3xl font-medium text-white">
                   {prof.nombreCompleto}
@@ -130,6 +138,48 @@ export default async function ProfessorProfile({
               </div>
             </div>
           ) : null}
+
+          {/* Áreas de conocimiento */}
+          {Array.isArray((prof as any).areasConocimiento) && (prof as any).areasConocimiento.length > 0 && (
+            <div className="mt-8">
+              <div className="text-xs uppercase tracking-widest text-white/60">Áreas de conocimiento</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(prof as any).areasConocimiento.map((t: string, i: number) => (
+                  <span key={i} className="inline-flex items-center rounded-full border border-white/10 bg-[#0b0d12] px-2.5 py-1 text-xs text-white/70">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Programas */}
+          {Array.isArray((prof as any).programas) && (prof as any).programas.length > 0 && (
+            <div className="mt-6">
+              <div className="text-xs uppercase tracking-widest text-white/60">Programas</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(prof as any).programas.map((t: string, i: number) => (
+                  <span key={i} className="inline-flex items-center rounded-full border border-white/10 bg-[#0b0d12] px-2.5 py-1 text-xs text-white/70">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Grupos de investigación */}
+          {Array.isArray((prof as any).gruposInvestigacion) && (prof as any).gruposInvestigacion.length > 0 && (
+            <div className="mt-6">
+              <div className="text-xs uppercase tracking-widest text-white/60">Grupos de investigación</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(prof as any).gruposInvestigacion.map((t: string, i: number) => (
+                  <span key={i} className="inline-flex items-center rounded-full border border-white/10 bg-[#0b0d12] px-2.5 py-1 text-xs text-white/70">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Materias que imparte */}

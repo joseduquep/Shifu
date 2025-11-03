@@ -15,6 +15,7 @@ type ApiProfesor = {
   departamento: string
   universidad?: string
   materias: string[]
+  fotografia?: string | null
 }
 
 export default function DashboardPage() {
@@ -288,6 +289,7 @@ export default function DashboardPage() {
                 department={p.departamento}
                 university={p.universidad}
                 materias={p.materias}
+                photoUrl={p.fotografia}
               />
               {/* Indicador de relevancia semántica */}
               {query.trim() && useSemanticSearchEnabled && 'relevanciaScore' in p && (

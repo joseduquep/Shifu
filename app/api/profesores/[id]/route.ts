@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 	const { data, error } = await supabasePublic
 		.from('profesores')
 		.select(
-			'id, nombre_completo, email, bio, created_at, departamentos:departamento_id ( id, nombre, universidades:universidad_id ( id, nombre ) )'
+			'id, nombre_completo, email, bio, raw_scraped_data, created_at, departamentos:departamento_id ( id, nombre, universidades:universidad_id ( id, nombre ) )'
 		)
 		.eq('id', id)
 		.single()
@@ -43,6 +43,27 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
 	// Eliminado: Stats, series y reseñas ya no son necesarios
 
+	const raw = (data as any).raw_scraped_data as
+		| {
+			areasConocimiento?: string[]
+			programas?: string[]
+			gruposInvestigacion?: string[]
+			fotografia?: string
+			scrapedData?: {
+				areasConocimiento?: string[]
+				programas?: string[]
+				gruposInvestigacion?: string[]
+				fotografia?: string
+			}
+		}
+		| null
+		| undefined
+
+	const getArray = (a?: unknown, b?: unknown) =>
+		(Array.isArray(a) && a.length ? a : Array.isArray(b) ? b : []) as string[]
+
+	const fotografia = raw?.fotografia || raw?.scrapedData?.fotografia || null
+
 	return NextResponse.json({
 		id: data.id,
 		nombreCompleto: data.nombre_completo,
@@ -51,6 +72,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 		bio: data.bio ?? null,
 		departamento: data.departamentos?.nombre ?? '',
 		universidad: data.departamentos?.universidades?.nombre ?? '',
+		areasConocimiento: getArray(raw?.areasConocimiento, raw?.scrapedData?.areasConocimiento),
+		programas: getArray(raw?.programas, raw?.scrapedData?.programas),
+		gruposInvestigacion: getArray(raw?.gruposInvestigacion, raw?.scrapedData?.gruposInvestigacion),
+		fotografia,
 		materias: ((materias as MateriaRow[] | null) ?? []).map((m) => ({
 			id: m.materia_id,
 			nombre: m.materia_nombre,

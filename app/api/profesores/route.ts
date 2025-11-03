@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
   const base = supabasePublic
     .from("profesores")
     .select(
-      "id, nombre_completo, departamentos:departamento_id ( id, nombre, universidades:universidad_id ( id, nombre ) )",
+      "id, nombre_completo, raw_scraped_data, departamentos:departamento_id ( id, nombre, universidades:universidad_id ( id, nombre ) )",
       { count: "exact" }
     )
     .range(offset, offset + limit - 1)
@@ -119,12 +119,15 @@ export async function GET(req: NextRequest) {
 
   const rows: ProfesorRow[] = (data ?? []) as ProfesorRow[]
   const out = rows.map((row) => {
+    const raw = (row as any).raw_scraped_data as any
+    const foto = raw?.fotografia || raw?.scrapedData?.fotografia || null
     return {
       id: row.id,
       nombreCompleto: row.nombre_completo,
       departamento: row.departamentos?.nombre ?? '',
       universidad: row.departamentos?.universidades?.nombre ?? '',
       materias: (materiasPorProfesor.get(row.id) || []).map((m) => m.nombre),
+      fotografia: foto,
       // Eliminado: calificacionPromedio y cantidadResenas
     }
   })

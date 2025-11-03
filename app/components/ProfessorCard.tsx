@@ -11,6 +11,7 @@ type ProfessorCardProps = {
   department: string
   university?: string
   materias?: string[]
+  photoUrl?: string | null
 }
 
 function initials(name: string) {
@@ -28,13 +29,23 @@ export function ProfessorCard({
   department,
   university,
   materias = [],
+  photoUrl,
 }: ProfessorCardProps) {
   return (
     <div className="rounded-2xl border border-white/10 bg-[#121621] p-6 hover:border-white/20 transition">
       <div className="flex items-center gap-4">
-        <div className="size-12 rounded-xl bg-[#0b0d12] grid place-items-center border border-white/10 text-white/80 font-medium">
-          {initials(name)}
-        </div>
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoUrl}
+            alt={name}
+            className="size-12 rounded-xl object-cover border border-white/10"
+          />
+        ) : (
+          <div className="size-12 rounded-xl bg-[#0b0d12] grid place-items-center border border-white/10 text-white/80 font-medium">
+            {initials(name)}
+          </div>
+        )}
         <div className="min-w-0">
           <div className="text-white font-medium truncate">{name}</div>
           <div className="text-xs text-white/60 truncate">
