@@ -1,553 +1,526 @@
+// File: `lib/services/sync/sync-orchestrator.ts`
 /**
  * Sync Orchestrator
  * Manages the full and incremental sync process with audit logging
  */
 
 import { supabaseAdmin } from '@/lib/supabase/admin-client';
-import { randomUUID } from 'crypto';
 import type { MappedProfessor } from './data-mapper';
 
 export type SyncType = 'full' | 'incremental' | 'manual';
 export type SyncStatus = 'started' | 'completed' | 'failed' | 'partial';
 
 export interface SyncOptions {
-	syncType: SyncType;
-	dryRun?: boolean;
-	forceUpdate?: boolean; // Ignore last_synced_at checks
-	userId?: string; // User who triggered the sync
+    syncType: SyncType;
+    dryRun?: boolean;
+    forceUpdate?: boolean; // Ignore last_synced_at checks
+    userId?: string; // User who triggered the sync
 }
 
 export interface SyncResult {
-	auditLogId: string;
-	status: SyncStatus;
-	recordsProcessed: number;
-	recordsCreated: number;
-	recordsUpdated: number;
-	recordsSkipped: number;
-	recordsFailed: number;
-	errors: Array<{ externalId: string; error: string }>;
-	details: Record<string, unknown>;
+    auditLogId: string;
+    status: SyncStatus;
+    recordsProcessed: number;
+    recordsCreated: number;
+    recordsUpdated: number;
+    recordsSkipped: number;
+    recordsFailed: number;
+    errors: Array<{ externalId: string; error: string }>;
+    details: Record<string, unknown>;
 }
 
 export interface ProcessRecordResult {
-	action: 'created' | 'updated' | 'skipped' | 'failed';
-	profesorId?: string;
-	reason?: string;
-	diff?: Record<string, { old: unknown; new: unknown }>;
-	error?: string;
+    action: 'created' | 'updated' | 'skipped' | 'failed';
+    profesorId?: string;
+    reason?: string;
+    diff?: Record<string, { old: unknown; new: unknown }>;
+    error?: string;
 }
 
 /**
  * Orchestrates data synchronization with the database
  */
 export class SyncOrchestrator {
-	private supabase = supabaseAdmin;
-	private configurationId?: string;
+    private supabase = supabaseAdmin;
+    private configurationId?: string;
 
-	constructor(configurationId?: string) {
-		this.configurationId = configurationId;
-	}
+    constructor(configurationId?: string) {
+        this.configurationId = configurationId;
+    }
 
-	/**
-	 * Start a sync operation
-	 */
-	async sync(
-		professors: MappedProfessor[],
-		options: SyncOptions,
-	): Promise<SyncResult> {
-		const startTime = new Date();
+    /**
+     * Start a sync operation
+     */
+    async sync(
+        professors: MappedProfessor[],
+        options: SyncOptions,
+    ): Promise<SyncResult> {
+        const startTime = new Date();
 
-		// Create audit log entry
-		const auditLogId = await this.createAuditLog(options, startTime);
+        // Create audit log entry
+        const auditLogId = await this.createAuditLog(options, startTime);
 
-		const result: SyncResult = {
-			auditLogId,
-			status: 'started',
-			recordsProcessed: 0,
-			recordsCreated: 0,
-			recordsUpdated: 0,
-			recordsSkipped: 0,
-			recordsFailed: 0,
-			errors: [],
-			details: {
-				startTime: startTime.toISOString(),
-				dryRun: options.dryRun || false,
-			},
-		};
+        const result: SyncResult = {
+            auditLogId,
+            status: 'started',
+            recordsProcessed: 0,
+            recordsCreated: 0,
+            recordsUpdated: 0,
+            recordsSkipped: 0,
+            recordsFailed: 0,
+            errors: [],
+            details: {
+                startTime: startTime.toISOString(),
+                dryRun: options.dryRun || false,
+            },
+        };
 
-		try {
-			// Process each professor
-			for (const professor of professors) {
-				const processResult = await this.processRecord(professor, options);
-				// Verbose logging per record for troubleshooting
-				if (processResult.action === 'failed') {
-					console.error('[SYNC][FAILED]', {
-						external_id: professor.external_id,
-						nombre: professor.nombre_completo,
-						reason: processResult.reason,
-						error: processResult.error,
-					});
-				} else {
-					console.log('[SYNC]', processResult.action.toUpperCase(), {
-						external_id: professor.external_id,
-						nombre: professor.nombre_completo,
-						reason: processResult.reason,
-					});
-				}
+        try {
+            // Process each professor
+            for (const professor of professors) {
+                const processResult = await this.processRecord(professor, options);
 
-				result.recordsProcessed++;
+                if (processResult.action === 'failed') {
+                    console.error('[SYNC][FAILED]', {
+                        external_id: professor.external_id,
+                        nombre: professor.nombre_completo,
+                        reason: processResult.reason,
+                        error: processResult.error,
+                    });
+                } else {
+                    console.log('[SYNC]', processResult.action.toUpperCase(), {
+                        external_id: professor.external_id,
+                        nombre: professor.nombre_completo,
+                        reason: processResult.reason,
+                    });
+                }
 
-				switch (processResult.action) {
-					case 'created':
-						result.recordsCreated++;
-						break;
-					case 'updated':
-						result.recordsUpdated++;
-						break;
-					case 'skipped':
-						result.recordsSkipped++;
-						break;
-					case 'failed':
-						result.recordsFailed++;
-						result.errors.push({
-							externalId: professor.external_id,
-							error: processResult.error || 'Unknown error',
-						});
-						break;
-				}
+                result.recordsProcessed++;
 
-				// Log individual record
-				await this.logRecord(auditLogId, professor, processResult);
-			}
+                switch (processResult.action) {
+                    case 'created':
+                        result.recordsCreated++;
+                        break;
+                    case 'updated':
+                        result.recordsUpdated++;
+                        break;
+                    case 'skipped':
+                        result.recordsSkipped++;
+                        break;
+                    case 'failed':
+                        result.recordsFailed++;
+                        result.errors.push({
+                            externalId: professor.external_id,
+                            error: processResult.error || 'Unknown error',
+                        });
+                        break;
+                }
 
-			// Determine final status
-			result.status =
-				result.recordsFailed > 0
-					? result.recordsFailed === result.recordsProcessed
-						? 'failed'
-						: 'partial'
-					: 'completed';
+                // Log individual record
+                await this.logRecord(auditLogId, professor, processResult);
+            }
 
-			// Update audit log with final results
-			await this.updateAuditLog(auditLogId, result, new Date());
+            // Determine final status
+            result.status =
+                result.recordsFailed > 0
+                    ? result.recordsFailed === result.recordsProcessed
+                        ? 'failed'
+                        : 'partial'
+                    : 'completed';
 
-			// Update configuration's last sync time
-			if (this.configurationId && !options.dryRun) {
-				await this.updateConfigurationSyncTime(options.syncType);
-			}
-		} catch (error) {
-			result.status = 'failed';
-			result.details.error = error instanceof Error ? error.message : 'Unknown error';
+            // Update audit log with final results
+            await this.updateAuditLog(auditLogId, result, new Date());
 
-			await this.updateAuditLog(auditLogId, result, new Date());
+            // Update configuration's last sync time
+            if (this.configurationId && !options.dryRun) {
+                await this.updateConfigurationSyncTime(options.syncType);
+            }
+        } catch (error) {
+            result.status = 'failed';
+            (result.details as any).error = error instanceof Error ? error.message : 'Unknown error';
 
-			throw error;
-		}
+            await this.updateAuditLog(auditLogId, result, new Date());
+            throw error;
+        }
 
-		return result;
-	}
+        return result;
+    }
 
-	/**
-	 * Process a single professor record
-	 */
-	private async processRecord(
-		professor: MappedProfessor,
-		options: SyncOptions,
-	): Promise<ProcessRecordResult> {
-		try {
-			// 1. Look for existing professor by external_id
-			const { data: existing, error: fetchError } = await this.supabase
-				.from('profesores')
-				.select('*')
-				.eq('external_id', professor.external_id)
-				.maybeSingle();
+    /**
+     * Process a single professor record
+     */
+    private async processRecord(
+        professor: MappedProfessor,
+        options: SyncOptions,
+    ): Promise<ProcessRecordResult> {
+        try {
+            // 1) Buscar existente por external_id
+            const { data: existing, error: fetchError } = await this.supabase
+                .from('profesores')
+                .select('*')
+                .eq('external_id', professor.external_id)
+                .maybeSingle();
 
-			if (fetchError) {
-				return {
-					action: 'failed',
-					error: `Database error: ${fetchError.message}`,
-				};
-			}
+            if (fetchError) {
+                return {
+                    action: 'failed',
+                    error: `Database error: ${fetchError.message}`,
+                };
+            }
 
-			// 2. Check if professor opted out of sync
-			if (existing && !existing.sync_enabled) {
-				return {
-					action: 'skipped',
-					profesorId: existing.id,
-					reason: 'opt_out',
-				};
-			}
+            // 2) Opt-out
+            if (existing && !existing.sync_enabled) {
+                return {
+                    action: 'skipped',
+                    profesorId: existing.id,
+                    reason: 'opt_out',
+                };
+            }
 
-			// 3. If professor doesn't exist, create new record
-			if (!existing) {
-				return await this.createProfessor(professor, options);
-			}
+            // 3) No existe -> crear
+            if (!existing) {
+                return await this.createProfessor(professor, options);
+            }
 
-			// 4. If professor exists, check for changes
-			return await this.updateProfessor(existing, professor, options);
-		} catch (error) {
-			return {
-				action: 'failed',
-				error: error instanceof Error ? error.message : 'Unknown error',
-			};
-		}
-	}
+            // 4) Existe -> actualizar
+            return await this.updateProfessor(existing, professor, options);
+        } catch (error) {
+            return {
+                action: 'failed',
+                error: error instanceof Error ? error.message : 'Unknown error',
+            };
+        }
+    }
 
-	/**
-	 * Create a new professor record
-	 */
-	private async createProfessor(
-		professor: MappedProfessor,
-		options: SyncOptions,
-	): Promise<ProcessRecordResult> {
-		if (options.dryRun) {
-			return {
-				action: 'created',
-				reason: 'dry_run',
-			};
-		}
+    /**
+     * Create a new professor record
+     */
+    private async createProfessor(
+        professor: MappedProfessor,
+        options: SyncOptions,
+    ): Promise<ProcessRecordResult> {
+        if (options.dryRun) {
+            return { action: 'created', reason: 'dry_run' };
+        }
 
-		// Find or create department
-		const departamentoId = await this.findOrCreateDepartment(
-			professor.departamento_nombre || 'General',
-			professor.universidad_nombre || 'Universidad EAFIT',
-		);
+        // Resolver departamento
+        const departamentoId = await this.findOrCreateDepartment(
+            professor.departamento_nombre || 'General',
+            professor.universidad_nombre || 'Universidad EAFIT',
+        );
 
-		if (!departamentoId) {
-			return {
-				action: 'failed',
-				error: 'Could not find or create department',
-			};
-		}
+        if (!departamentoId) {
+            return { action: 'failed', error: 'Could not find or create department' };
+        }
 
-		// Intento 1: INSERT normal (deja que Postgres genere id por defecto)
-        let { data, error } = await this.supabase
-			.from('profesores')
+        const { data, error } = await this.supabase
+            .from('profesores')
             .insert({
-				nombre_completo: professor.nombre_completo,
-				email: professor.email,
-				bio: professor.bio,
-				departamento_id: departamentoId,
-				external_id: professor.external_id,
-				external_source: professor.external_source,
-				raw_scraped_data: professor.raw_scraped_data,
-				last_synced_at: new Date().toISOString(),
-				sync_enabled: true,
-				manual_override_fields: [],
-			})
-			.select()
-			.single();
+                nombre_completo: professor.nombre_completo,
+                email: professor.email,
+                bio: professor.bio,
+                departamento_id: departamentoId,
+                external_id: professor.external_id,
+                external_source: professor.external_source,
+                raw_scraped_data: professor.raw_scraped_data,
+                last_synced_at: new Date().toISOString(),
+                sync_enabled: true,
+                manual_override_fields: [],
+                fotografia: professor.fotografia ?? null, // NUEVO
+            })
+            .select()
+            .single();
 
-		if (error) {
-			// Si el error es duplicado por external_id, hacemos UPDATE
-			if ((error as any).code === '23505') {
-				const { data: existing } = await this.supabase
-					.from('profesores')
-					.select('id')
-					.eq('external_id', professor.external_id)
-					.maybeSingle();
+        if (error) {
+            // Duplicado por external_id -> actualizar
+            if ((error as any).code === '23505') {
+                const { data: existing } = await this.supabase
+                    .from('profesores')
+                    .select('id, fotografia')
+                    .eq('external_id', professor.external_id)
+                    .maybeSingle();
 
-				if (existing?.id) {
-					const { error: updErr } = await this.supabase
-						.from('profesores')
-						.update({
-							nombre_completo: professor.nombre_completo,
-							email: professor.email,
-							bio: professor.bio,
-							departamento_id: departamentoId,
-							raw_scraped_data: professor.raw_scraped_data,
-							last_synced_at: new Date().toISOString(),
-						})
-						.eq('id', existing.id);
+                if (existing?.id) {
+                    const { error: updErr } = await this.supabase
+                        .from('profesores')
+                        .update({
+                            nombre_completo: professor.nombre_completo,
+                            email: professor.email,
+                            bio: professor.bio,
+                            departamento_id: departamentoId,
+                            raw_scraped_data: professor.raw_scraped_data,
+                            last_synced_at: new Date().toISOString(),
+                            fotografia: professor.fotografia ?? (existing as any).fotografia ?? null, // NUEVO
+                        })
+                        .eq('id', existing.id);
 
-					if (updErr) {
-						console.error('[SYNC][UPSERT->UPDATE][ERROR]', updErr);
-						return { action: 'failed', error: `Upsert update error: ${updErr.message}` };
-					}
+                    if (updErr) {
+                        console.error('[SYNC][UPSERT->UPDATE][ERROR]', updErr);
+                        return { action: 'failed', error: `Upsert update error: ${updErr.message}` };
+                    }
 
-					return { action: 'updated', profesorId: existing.id };
-				}
-			}
-			console.error('[SYNC][INSERT][ERROR]', {
-				external_id: professor.external_id,
-				message: error.message,
-				details: (error as any).details,
-				hint: (error as any).hint,
-				code: (error as any).code,
-			});
-			return {
-				action: 'failed',
-				error: `Insert error: ${error.message} ${(error as any).details || ''}`.trim(),
-			};
-		}
+                    return { action: 'updated', profesorId: existing.id };
+                }
+            }
 
-		return {
-			action: 'created',
-			profesorId: data.id,
-		};
-	}
+            console.error('[SYNC][INSERT][ERROR]', {
+                external_id: professor.external_id,
+                message: error.message,
+                details: (error as any).details,
+                hint: (error as any).hint,
+                code: (error as any).code,
+            });
 
-	/**
-	 * Update an existing professor record
-	 */
-	private async updateProfessor(
-		existing: any,
-		professor: MappedProfessor,
-		options: SyncOptions,
-	): Promise<ProcessRecordResult> {
-		const manualOverrideFields = (existing.manual_override_fields as string[]) || [];
+            return {
+                action: 'failed',
+                error: `Insert error: ${error.message} ${(error as any).details || ''}`.trim(),
+            };
+        }
 
-		// Build update object, respecting manual overrides
-		const updates: Record<string, unknown> = {
-			last_synced_at: new Date().toISOString(),
-			raw_scraped_data: professor.raw_scraped_data,
-		};
+        return { action: 'created', profesorId: (data as any).id };
+    }
 
-		const diff: Record<string, { old: unknown; new: unknown }> = {};
-		let hasChanges = false;
+    /**
+     * Update an existing professor record
+     */
+    private async updateProfessor(
+        existing: any,
+        professor: MappedProfessor,
+        options: SyncOptions,
+    ): Promise<ProcessRecordResult> {
+        const manualOverrideFields = (existing.manual_override_fields as string[]) || [];
 
-		// Check each field for changes
-		const fieldsToSync = [
-			{ field: 'nombre_completo', value: professor.nombre_completo },
-			{ field: 'email', value: professor.email },
-			{ field: 'bio', value: professor.bio },
-		];
+        // Base de actualizaciones
+        const updates: Record<string, unknown> = {
+            last_synced_at: new Date().toISOString(),
+            raw_scraped_data: professor.raw_scraped_data,
+        };
 
-		for (const { field, value } of fieldsToSync) {
-			// Skip if manually overridden
-			if (manualOverrideFields.includes(field)) {
-				continue;
-			}
+        const diff: Record<string, { old: unknown; new: unknown }> = {};
+        let hasChanges = false;
 
-			// Check if changed
-			if (existing[field] !== value && value !== undefined) {
-				diff[field] = {
-					old: existing[field],
-					new: value,
-				};
-				updates[field] = value;
-				hasChanges = true;
-			}
-		}
+        // Intentar resolver el nuevo departamento (si viene nombre)
+        let desiredDepartamentoId: string | null = null;
+        if (professor.departamento_nombre || professor.universidad_nombre) {
+            desiredDepartamentoId = await this.findOrCreateDepartment(
+                professor.departamento_nombre || 'General',
+                professor.universidad_nombre || 'Universidad EAFIT',
+            );
+        }
 
-		// No changes to sync
-		if (!hasChanges) {
-			// Still update last_synced_at if not a dry run
-			if (!options.dryRun) {
-				await this.supabase
-					.from('profesores')
-					.update({ last_synced_at: updates.last_synced_at })
-					.eq('id', existing.id);
-			}
+        // Campos a sincronizar (respetando overrides)
+        const fieldsToSync: Array<{ field: string; value: unknown }> = [
+            { field: 'nombre_completo', value: professor.nombre_completo },
+            { field: 'email', value: professor.email },
+            { field: 'bio', value: professor.bio },
+            { field: 'fotografia', value: professor.fotografia }, // NUEVO
+        ];
 
-			return {
-				action: 'skipped',
-				profesorId: existing.id,
-				reason: 'no_changes',
-			};
-		}
+        // Incluir cambio de departamento si aplica
+        if (desiredDepartamentoId && desiredDepartamentoId !== existing.departamento_id) {
+            fieldsToSync.push({ field: 'departamento_id', value: desiredDepartamentoId });
+        }
 
-		// Dry run - don't actually update
-		if (options.dryRun) {
-			return {
-				action: 'updated',
-				profesorId: existing.id,
-				reason: 'dry_run',
-				diff,
-			};
-		}
+        for (const { field, value } of fieldsToSync) {
+            // Si está overrideado manualmente, saltar
+            if (manualOverrideFields.includes(field) || (field === 'departamento_id' && manualOverrideFields.includes('departamento'))) {
+                continue;
+            }
 
+            if (existing[field] !== value && value !== undefined) {
+                diff[field] = { old: existing[field], new: value };
+                updates[field] = value;
+                hasChanges = true;
+            }
+        }
 
-		// Perform update (upsert guard on external_id)
-		const { error } = await this.supabase
-			.from('profesores')
-			.update(updates)
-			.eq('id', existing.id);
+        // Nada por cambiar
+        if (!hasChanges) {
+            if (!options.dryRun) {
+                await this.supabase.from('profesores').update({ last_synced_at: updates.last_synced_at }).eq('id', existing.id);
+            }
+            return { action: 'skipped', profesorId: existing.id, reason: 'no_changes' };
+        }
 
-		if (error) {
-			console.error('[SYNC][UPDATE][ERROR]', {
-				id: existing.id,
-				external_id: existing.external_id,
-				message: error.message,
-				details: (error as any).details,
-				hint: (error as any).hint,
-				code: (error as any).code,
-			});
-			return {
-				action: 'failed',
-				profesorId: existing.id,
-				error: `Update error: ${error.message} ${(error as any).details || ''}`.trim(),
-			};
-		}
+        // Dry run
+        if (options.dryRun) {
+            return { action: 'updated', profesorId: existing.id, reason: 'dry_run', diff };
+        }
 
-		return {
-			action: 'updated',
-			profesorId: existing.id,
-			diff,
-		};
-	}
+        // Actualizar
+        const { error } = await this.supabase.from('profesores').update(updates).eq('id', existing.id);
 
-	/**
-	 * Find or create a department
-	 */
-	private async findOrCreateDepartment(
-		departmentName: string,
-		universidadNombre: string,
-	): Promise<string | null> {
-		// First, find or create universidad
-		let { data: universidad, error: uniError } = await this.supabase
-			.from('universidades')
-			.select('id')
-			.ilike('nombre', universidadNombre)
-			.maybeSingle();
+        if (error) {
+            console.error('[SYNC][UPDATE][ERROR]', {
+                id: existing.id,
+                external_id: existing.external_id,
+                message: error.message,
+                details: (error as any).details,
+                hint: (error as any).hint,
+                code: (error as any).code,
+            });
+            return {
+                action: 'failed',
+                profesorId: existing.id,
+                error: `Update error: ${error.message} ${(error as any).details || ''}`.trim(),
+            };
+        }
 
-		if (uniError && uniError.code !== 'PGRST116') {
-			console.error('Error finding universidad:', uniError);
-			return null;
-		}
+        return { action: 'updated', profesorId: existing.id, diff };
+    }
 
-		// Create universidad if it doesn't exist
-		if (!universidad) {
-			const { data: newUni, error: createUniError } = await this.supabase
-				.from('universidades')
-				.insert({ nombre: universidadNombre })
-				.select()
-				.single();
+    /**
+     * Find or create a department
+     */
+    private async findOrCreateDepartment(
+        departmentName: string,
+        universidadNombre: string,
+    ): Promise<string | null> {
+        // 1) Universidad
+        let { data: universidad, error: uniError } = await this.supabase
+            .from('universidades')
+            .select('id')
+            .ilike('nombre', universidadNombre)
+            .maybeSingle();
 
-			if (createUniError) {
-				console.error('Error creating universidad:', createUniError);
-				return null;
-			}
+        if (uniError && (uniError as any).code !== 'PGRST116') {
+            console.error('Error finding universidad:', uniError);
+            return null;
+        }
 
-			universidad = newUni;
-		}
+        if (!universidad) {
+            const { data: newUni, error: createUniError } = await this.supabase
+                .from('universidades')
+                .insert({ nombre: universidadNombre })
+                .select()
+                .single();
 
-		// Now find or create department
-		let { data: departamento, error: deptError } = await this.supabase
-			.from('departamentos')
-			.select('id')
-			.eq('universidad_id', universidad!.id)
-			.ilike('nombre', departmentName)
-			.maybeSingle();
+            if (createUniError) {
+                console.error('Error creating universidad:', createUniError);
+                return null;
+            }
+            universidad = newUni;
+        }
 
-		if (deptError && deptError.code !== 'PGRST116') {
-			console.error('Error finding departamento:', deptError);
-			return null;
-		}
+        // 2) Departamento
+        let { data: departamento, error: deptError } = await this.supabase
+            .from('departamentos')
+            .select('id')
+            .eq('universidad_id', universidad!.id)
+            .ilike('nombre', departmentName)
+            .maybeSingle();
 
-		// Create department if it doesn't exist
-		if (!departamento) {
-			const { data: newDept, error: createDeptError } = await this.supabase
-				.from('departamentos')
-				.insert({
-					nombre: departmentName,
-					universidad_id: universidad!.id,
-				})
-				.select()
-				.single();
+        if (deptError && (deptError as any).code !== 'PGRST116') {
+            console.error('Error finding departamento:', deptError);
+            return null;
+        }
 
-			if (createDeptError) {
-				console.error('Error creating departamento:', createDeptError);
-				return null;
-			}
+        if (!departamento) {
+            const { data: newDept, error: createDeptError } = await this.supabase
+                .from('departamentos')
+                .insert({
+                    nombre: departmentName,
+                    universidad_id: universidad!.id,
+                })
+                .select()
+                .single();
 
-			departamento = newDept;
-		}
+            if (createDeptError) {
+                console.error('Error creating departamento:', createDeptError);
+                return null;
+            }
 
-		return departamento!.id;
-	}
+            departamento = newDept;
+        }
 
-	/**
-	 * Create an audit log entry
-	 */
-	private async createAuditLog(
-		options: SyncOptions,
-		startTime: Date,
-	): Promise<string> {
-		const { data, error } = await this.supabase
-			.from('sync_audit_logs')
-			.insert({
-				configuration_id: this.configurationId || null,
-				sync_type: options.syncType,
-				status: 'started',
-				started_at: startTime.toISOString(),
-				created_by: options.userId || null,
-				details: {
-					dryRun: options.dryRun || false,
-					forceUpdate: options.forceUpdate || false,
-				},
-			})
-			.select()
-			.single();
+        return departamento!.id;
+    }
 
-		if (error || !data) {
-			throw new Error(`Failed to create audit log: ${error?.message}`);
-		}
+    /**
+     * Create an audit log entry
+     */
+    private async createAuditLog(
+        options: SyncOptions,
+        startTime: Date,
+    ): Promise<string> {
+        const { data, error } = await this.supabase
+            .from('sync_audit_logs')
+            .insert({
+                configuration_id: this.configurationId || null,
+                sync_type: options.syncType,
+                status: 'started',
+                started_at: startTime.toISOString(),
+                created_by: options.userId || null,
+                details: {
+                    dryRun: options.dryRun || false,
+                    forceUpdate: options.forceUpdate || false,
+                },
+            })
+            .select()
+            .single();
 
-		return data.id;
-	}
+        if (error || !data) {
+            throw new Error(`Failed to create audit log: ${error?.message}`);
+        }
 
-	/**
-	 * Update audit log with final results
-	 */
-	private async updateAuditLog(
-		auditLogId: string,
-		result: SyncResult,
-		completedAt: Date,
-	): Promise<void> {
-		await this.supabase
-			.from('sync_audit_logs')
-			.update({
-				status: result.status,
-				completed_at: completedAt.toISOString(),
-				records_processed: result.recordsProcessed,
-				records_created: result.recordsCreated,
-				records_updated: result.recordsUpdated,
-				records_skipped: result.recordsSkipped,
-				records_failed: result.recordsFailed,
-				error_message:
-					result.errors.length > 0
-						? result.errors.map((e) => e.error).join('; ')
-						: null,
-				details: result.details,
-			})
-			.eq('id', auditLogId);
-	}
+        return (data as any).id;
+    }
 
-	/**
-	 * Log individual record processing
-	 */
-	private async logRecord(
-		auditLogId: string,
-		professor: MappedProfessor,
-		result: ProcessRecordResult,
-	): Promise<void> {
-		await this.supabase.from('sync_record_logs').insert({
-			audit_log_id: auditLogId,
-			external_id: professor.external_id,
-			profesor_id: result.profesorId || null,
-			action: result.action,
-			reason: result.reason || null,
-			diff: result.diff || null,
-			error_message: result.error || null,
-		});
-	}
+    /**
+     * Update audit log with final results
+     */
+    private async updateAuditLog(
+        auditLogId: string,
+        result: SyncResult,
+        completedAt: Date,
+    ): Promise<void> {
+        await this.supabase
+            .from('sync_audit_logs')
+            .update({
+                status: result.status,
+                completed_at: completedAt.toISOString(),
+                records_processed: result.recordsProcessed,
+                records_created: result.recordsCreated,
+                records_updated: result.recordsUpdated,
+                records_skipped: result.recordsSkipped,
+                records_failed: result.recordsFailed,
+                error_message:
+                    result.errors.length > 0 ? result.errors.map((e) => e.error).join('; ') : null,
+                details: result.details,
+            })
+            .eq('id', auditLogId);
+    }
 
-	/**
-	 * Update configuration's last sync time
-	 */
-	private async updateConfigurationSyncTime(syncType: SyncType): Promise<void> {
-		if (!this.configurationId) return;
+    /**
+     * Log individual record processing
+     */
+    private async logRecord(
+        auditLogId: string,
+        professor: MappedProfessor,
+        result: ProcessRecordResult,
+    ): Promise<void> {
+        await this.supabase.from('sync_record_logs').insert({
+            audit_log_id: auditLogId,
+            external_id: professor.external_id,
+            profesor_id: result.profesorId || null,
+            action: result.action,
+            reason: result.reason || null,
+            diff: result.diff || null,
+            error_message: result.error || null,
+        });
+    }
 
-		const field =
-			syncType === 'full' ? 'last_full_sync_at' : 'last_incremental_sync_at';
+    /**
+     * Update configuration's last sync time
+     */
+    private async updateConfigurationSyncTime(syncType: SyncType): Promise<void> {
+        if (!this.configurationId) return;
 
-		await this.supabase
-			.from('sync_configurations')
-			.update({
-				[field]: new Date().toISOString(),
-			})
-			.eq('id', this.configurationId);
-	}
+        const field = syncType === 'full' ? 'last_full_sync_at' : 'last_incremental_sync_at';
+
+        await this.supabase
+            .from('sync_configurations')
+            .update({ [field]: new Date().toISOString() })
+            .eq('id', this.configurationId);
+    }
 }
-

@@ -123,7 +123,7 @@ export default function DashboardPage() {
             departamento: result.departamento,
             universidad: result.universidad,
             materias: result.materias || [],
-            relevanciaScore: result.relevanciaScore
+            relevanciaScore: result.relevanciaScore,
           }))
         }
     
@@ -157,12 +157,6 @@ export default function DashboardPage() {
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl md:text-3xl font-medium">Dashboard</h1>
-          <Link
-            href="/calificar"
-            className="inline-flex items-center rounded-full bg-primary text-[#0b0d12] px-4 py-2 text-sm font-medium hover:opacity-90 transition"
-          >
-            Nueva reseña
-          </Link>
         </div>
 
         <div className="mt-6">
