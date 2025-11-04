@@ -11,9 +11,9 @@ export default function SyncQuickAction() {
             setLoading(true)
             setMsg(null)
             // 1) Obtener configuraciones
-            let res = await fetch('/api/admin/sync/configurations', { cache: 'no-store' })
-            let configs = [] as any[]
-            if (res.ok) configs = await res.json()
+            const res = await fetch('/api/admin/sync/configurations', { cache: 'no-store' })
+            let configs: Array<{ id: string }> = []
+            if (res.ok) configs = (await res.json()) as Array<{ id: string }>
 
             // 2) Crear por defecto si no existe
             let configId = configs[0]?.id as string | undefined

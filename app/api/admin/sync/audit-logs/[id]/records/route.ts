@@ -30,6 +30,10 @@ export async function GET(
     if (authError || !user) {
         if (!devBypass) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    // If devBypass is active and user is null, we should still not proceed to access user.id
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized: Dev bypass active but user is null' }, { status: 401 });
+    }
 
 		const { data: profile } = await supabase
 			.from('profiles')

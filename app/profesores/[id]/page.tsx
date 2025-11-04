@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { headers } from "next/headers"
+import Image from "next/image"
 // Estos componentes importados se asume que manejan su propio estilo y lógica.
 import { FavoriteButton } from "@/app/components/FavoriteButton"
 import { ShareProfileButton } from "@/app/components/ShareProfileButton"
@@ -59,11 +60,13 @@ export default async function ProfessorProfile({
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 pb-6 border-b border-white/10 mb-8">
                         <div className="flex items-start gap-5">
                             {/* Avatar más grande y angular */}
-                            {prof.fotografia ? (
-                                <img
+{prof.fotografia ? (
+                                <Image
                                     src={prof.fotografia}
                                     alt={prof.nombreCompleto}
-                                    className="size-20 rounded-xl object-cover border-2 border-white/20 shadow-lg"
+                                    width={80}
+                                    height={80}
+                                    className="rounded-xl object-cover border-2 border-white/20 shadow-lg size-20"
                                 />
                             ) : (
                                 <div className="size-20 rounded-xl bg-[#0b0d12] grid place-items-center border border-white/10 text-white/80 text-2xl font-semibold flex-shrink-0">
@@ -148,9 +151,9 @@ export default async function ProfessorProfile({
                                     Materias Activas
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    {prof.materias.map((m: any) => (
+{prof.materias.map((m: string | { id?: string; nombre?: string; codigo?: string; departamento?: string }, i: number) => (
                                         <span
-                                            key={m.id ?? m}
+                                            key={typeof m === 'string' ? `${m}-${i}` : m.id ?? m.nombre ?? String(i)}
                                             className="inline-flex items-center rounded-full bg-[#0b0d12] px-3 py-1 text-xs text-white/70 font-medium border border-white/10 hover:bg-white/10 transition"
                                         >
                       {typeof m === 'string' ? m : `${m.nombre}${m.codigo ? ` - ${m.codigo}` : ''}`}
@@ -216,18 +219,18 @@ export default async function ProfessorProfile({
                     <div className="mt-8 rounded-3xl p-6 border border-white/10 bg-[#121621] shadow-xl shadow-black/50">
                         <h2 className="text-lg uppercase tracking-widest font-bold text-white/60 mb-4">Detalle de Cursos</h2>
                         <div className="space-y-3">
-                            {prof.materias.map((materia: any, index: number) => (
+{prof.materias.map((materia: string | { nombre?: string; codigo?: string; departamento?: string }, index: number) => (
                                 <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-white/5 bg-[#0b0d12] transition duration-200 hover:bg-white/5">
                                     <div>
-                                        <div className="text-white font-semibold text-base">{materia.nombre || materia}</div>
+<div className="text-white font-semibold text-base">{typeof materia === 'string' ? materia : (materia.nombre ?? String(index))}</div>
                                         <div className="text-sm text-white/50 mt-1">
-                                            Código: {materia.codigo || 'N/A'}
+                                            Código: {typeof materia === 'string' ? 'N/A' : (materia.codigo ?? 'N/A')}
                                             <span className="mx-2 text-white/30">•</span>
-                                            Departamento: {materia.departamento || prof.departamento}
+                                            Departamento: {typeof materia === 'string' ? prof.departamento : (materia.departamento || prof.departamento)}
                                         </div>
                                     </div>
-                                    <div className="text-sm text-white/40 font-mono mt-2 sm:mt-0 sm:text-right">
-                                        {materia.codigo || (typeof materia === 'string' ? 'N/A' : prof.departamento.substring(0, 3).toUpperCase())}
+<div className="text-sm text-white/40 font-mono mt-2 sm:mt-0 sm:text-right">
+                                        {typeof materia === 'string' ? 'N/A' : (materia.codigo || prof.departamento.substring(0, 3).toUpperCase())}
                                     </div>
                                 </div>
                             ))}

@@ -215,23 +215,6 @@ export default function SyncManagementPage() {
         }
     };
 
-    const toggleConfiguration = async (configId: string, enabled: boolean) => {
-        try {
-            const response = await fetch(`/api/admin/sync/configurations/${configId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabled }),
-            });
-
-            if (!response.ok) throw new Error('Failed to update configuration');
-
-            toast.success(`Configuration ${enabled ? 'enabled' : 'disabled'}`);
-            await loadConfigurations();
-        } catch (error) {
-            toast.error('Failed to update configuration');
-            console.error(error);
-        }
-    };
 
     const createDefaultConfiguration = async () => {
         try {

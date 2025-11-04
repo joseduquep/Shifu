@@ -5,7 +5,7 @@
 
 import { EAFITScraper } from '../scrapers/eafit-scraper';
 import { DataMapper } from './data-mapper';
-import { SyncOrchestrator, type SyncOptions, type SyncResult } from './sync-orchestrator';
+import { SyncOrchestrator, type SyncResult } from './sync-orchestrator';
 import { supabaseAdmin } from '@/lib/supabase/admin-client';
 
 export interface SyncConfiguration {

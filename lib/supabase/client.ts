@@ -1,20 +1,11 @@
 "use client"
 
 import { createBrowserClient } from "@supabase/ssr"
-import {
-  type SupabaseClient,
-  type GenericSchema,
-  type GenericTable,
-} from "@supabase/supabase-js"
+type BrowserClient = ReturnType<typeof createBrowserClient>
 
-type Db = GenericSchema
-let supabaseClient: SupabaseClient<
-  Db,
-  GenericSchema["public"],
-  GenericTable
-> | null = null
+let supabaseClient: BrowserClient | null = null
 
-export function createClient() {
+export function createClient(): BrowserClient {
   // Devuelve la instancia existente si ya existe
   if (supabaseClient) return supabaseClient
 
@@ -31,5 +22,5 @@ export function createClient() {
     }
   )
 
-  return supabaseClient
+  return supabaseClient!
 }

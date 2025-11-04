@@ -58,10 +58,10 @@ export async function POST(request: NextRequest) {
       // Construir texto descriptivo del profesor
       const textoProfesor = [
         prof.nombre_completo,
-        prof.departamentos.nombre,
-        prof.departamentos.universidades.nombre,
+        prof.departamentos[0].nombre,
+        prof.departamentos[0].universidades[0].nombre,
         prof.bio || '',
-        ...(prof.profesores_materias || []).map((pm: { materias?: { nombre?: string } }) => pm.materias?.nombre || '').filter(Boolean)
+        ...(prof.profesores_materias || []).flatMap(pm => (pm.materias || []).map(m => m.nombre || '')).filter(Boolean)
       ].join(' ').trim()
 
       if (!textoProfesor) continue
@@ -76,10 +76,10 @@ export async function POST(request: NextRequest) {
         profesoresConRelevancia.push({
           id: prof.id,
           nombreCompleto: prof.nombre_completo,
-          departamento: prof.departamentos.nombre,
-          universidad: prof.departamentos.universidades.nombre,
+          departamento: prof.departamentos[0].nombre,
+          universidad: prof.departamentos[0].universidades[0].nombre,
           bio: prof.bio,
-          materias: prof.profesores_materias?.map((pm: { materias?: { nombre?: string } }) => pm.materias?.nombre).filter(Boolean) || [],
+          materias: prof.profesores_materias?.flatMap(pm => (pm.materias || []).map(m => m.nombre || '')).filter(Boolean) || [],
           relevanciaScore
         })
       } catch (error) {

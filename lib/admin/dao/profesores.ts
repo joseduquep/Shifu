@@ -57,23 +57,31 @@ export async function updateProfesor(input: ProfesorUpdate) {
     if (error) throw error
 
     if (data.user_id) {
-        const attrs: Record<string, unknown> = {}
+        // Use Supabase admin types to avoid any
+        type AdminAttrs = {
+            email?: string
+            password?: string
+            user_metadata?: Record<string, unknown>
+        }
+        const attrs: AdminAttrs = {}
         if (input.email) attrs.email = input.email
         if (input.password) attrs.password = input.password
         const meta: Record<string, unknown> = {}
         if (input.nombre_completo !== undefined) meta.full_name = input.nombre_completo
-        if (Object.keys(meta).length) (attrs as any).user_metadata = meta
+        if (Object.keys(meta).length) attrs.user_metadata = meta
         if (Object.keys(attrs).length) {
-            const { error: upErr } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, attrs as any)
+            const { error: upErr } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, attrs)
             if (upErr) throw upErr
         }
     } else {
-        if (input.password && (input.email || (data as any).email)) {
+        type UpdatedRow = { email: string | null; nombre_completo: string | null; id: string }
+        const d = data as UpdatedRow
+        if (input.password && (input.email || d.email)) {
             const { data: created, error: cErr } = await supabaseAdmin.auth.admin.createUser({
-                email: input.email ?? (data as any).email!,
+                email: input.email ?? d.email!,
                 password: input.password,
                 email_confirm: true,
-                user_metadata: { full_name: input.nombre_completo ?? (data as any).nombre_completo, role: 'professor' },
+                user_metadata: { full_name: input.nombre_completo ?? d.nombre_completo ?? undefined, role: 'professor' },
             })
             if (cErr) throw cErr
             const uid = created.user?.id

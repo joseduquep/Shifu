@@ -52,7 +52,7 @@ export async function generateMetadata({
         images: [`${baseUrl}/api/og/profesor/${id}`],
       },
     }
-  } catch (error) {
+  } catch {
     return {
       title: "Profesor no encontrado - Shifu",
       description: "El perfil del profesor no está disponible",
@@ -163,16 +163,16 @@ export default async function SharedProfessorProfile({
                 Materias que imparte
               </div>
               <div className="mt-4 space-y-3">
-                {prof.materias.map((materia: any, index: number) => (
+{prof.materias.map((materia: string | { nombre?: string; departamento?: string }, index: number) => (
                   <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-[#0b0d12]">
                     <div>
-                      <div className="text-white font-medium">{materia.nombre || materia}</div>
+<div className="text-white font-medium">{typeof materia === 'string' ? materia : (materia.nombre ?? String(index))}</div>
                       <div className="text-xs text-white/60 mt-1">
-                        {materia.departamento ? `Departamento de ${materia.departamento}` : prof.departamento}
+                        {typeof materia === 'string' ? prof.departamento : (materia.departamento ? `Departamento de ${materia.departamento}` : prof.departamento)}
                       </div>
                     </div>
                     <div className="text-xs text-white/40">
-                      {materia.departamento || prof.departamento}
+{typeof materia === 'string' ? prof.departamento : (materia.departamento || prof.departamento)}
                     </div>
                   </div>
                 ))}

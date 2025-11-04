@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
             .select('role')
             .eq('id', user.id)
             .single();
-        profile = data as any;
+        profile = (data as { role: string } | null);
     }
 
     if (!profile || profile.role !== 'admin') {
@@ -70,12 +70,12 @@ export async function POST(request: NextRequest) {
 		if (syncType === 'full') {
 			result = await syncService.runFullSync(configurationId, {
 				dryRun: dryRun || false,
-            userId: user?.id || null,
+            userId: user?.id || undefined,
 			});
 		} else {
 			result = await syncService.runIncrementalSync(configurationId, {
 				dryRun: dryRun || false,
-            userId: user?.id || null,
+            userId: user?.id || undefined,
 			});
 		}
 

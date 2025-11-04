@@ -12,6 +12,8 @@ type ProfessorCardProps = {
   university?: string
   materias?: string[]
   photoUrl?: string | null
+  rating?: number
+  reviewsCount?: number
 }
 
 function initials(name: string) {

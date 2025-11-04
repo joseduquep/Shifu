@@ -39,7 +39,7 @@ export async function PATCH(
             .select('role')
             .eq('id', user.id)
             .single();
-        profile = data as any;
+        profile = (data as { role: string } | null);
     }
 
     if (!profile || profile.role !== 'admin') {

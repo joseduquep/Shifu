@@ -111,9 +111,9 @@ export async function GET() {
     const favoritos = favoritosData?.map(fav => ({
       id: fav.id,
       profesor_id: fav.profesor_id,
-      nombre_completo: fav.profesores.nombre_completo,
-      departamento: fav.profesores.departamentos.nombre,
-      universidad: fav.profesores.departamentos.universidades.nombre,
+      nombre_completo: fav.profesores[0].nombre_completo,
+      departamento: fav.profesores[0].departamentos[0].nombre,
+      universidad: fav.profesores[0].departamentos[0].universidades[0].nombre,
       calificacion_promedio: 0, // Por ahora 0
       cantidad_resenas: 0, // Por ahora 0
       created_at: fav.created_at
@@ -199,7 +199,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Obtener el estudiante_id real desde la tabla estudiantes
-    const estudianteId = await getEstudianteIdFromAuthUser(user.id)
+    const estudianteId = await getOrCreateEstudianteIdFromAuthUser(user.id)
     if (!estudianteId) {
       return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
     }

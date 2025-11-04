@@ -3,6 +3,26 @@ import { z } from "zod"
 import { supabaseAdmin } from "@/lib/supabase/admin-client"
 import { createClient } from "@/lib/supabase/server"
 
+interface Universidad {
+  id: string;
+  nombre: string;
+}
+
+interface Departamento {
+  id: string;
+  nombre: string;
+  universidades: Universidad[];
+}
+
+interface ProfesorData {
+  id: string;
+  nombre_completo: string;
+  email: string;
+  bio: string | null;
+  departamento_id: string;
+  departamentos: Departamento[] | null;
+}
+
 const UpdateSchema = z.object({
   nombreCompleto: z.string().trim().min(3).max(200).optional(),
   email: z.string().email().optional(),
@@ -18,7 +38,7 @@ export async function GET() {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 })
 
   // Intento 1: por user_id (si existe la columna)
-  let data: Record<string, unknown> | null = null
+  let data: ProfesorData | null = null
   let error: { message?: string } | null = null
   try {
     const res = await supabaseAdmin
@@ -56,8 +76,8 @@ export async function GET() {
     email: data.email,
     bio: data.bio,
     departamentoId: data.departamento_id,
-    departamento: data.departamentos?.nombre ?? "",
-    universidad: data.departamentos?.universidades?.[0]?.nombre ?? "",
+    departamento: data.departamentos?.[0]?.nombre ?? "",
+    universidad: data.departamentos?.[0]?.universidades?.[0]?.nombre ?? "",
   })
 }
 

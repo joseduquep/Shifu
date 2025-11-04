@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabasePublic } from '@/lib/supabase/public-client'
 
+type RawScraped = {
+    scrapedData?: { bio?: string; areasConocimiento?: string[]; programas?: string[]; gruposInvestigacion?: string[]; }
+    areasConocimiento?: string[]
+    programas?: string[]
+    gruposInvestigacion?: string[]
+} | null
+
 type ProfesorRow = {
     id: string
     nombre_completo: string
     bio: string | null
-    raw_scraped_data: any | null
+    raw_scraped_data: RawScraped
     departamentos: {
         id: string
         nombre: string
@@ -42,9 +49,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
             .select('materia_nombre')
             .eq('profesor_id', id)
 
-        const nombreProfesor = profesor.nombre_completo
         const raw = profesor.raw_scraped_data || {}
-        const scraped = (raw?.scrapedData ?? {}) as any
+        const scraped = raw?.scrapedData ?? {}
 
         // Preferir bio scrapeada si existe
         const bioProfesor =
@@ -56,7 +62,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         const nombreUni = profesor.departamentos?.universidades?.nombre || 'Universidad desconocida'
 
         const materiasTexto =
-            (materias?.map((m: any) => m.materia_nombre).filter(Boolean) || []).join(', ') || 'ninguna'
+            (materias?.map((m: { materia_nombre: string }) => m.materia_nombre).filter(Boolean) || []).join(', ') || 'ninguna'
 
         // Chips del scrape (si existen) para enriquecer el prompt
         const areas = (raw?.areasConocimiento || scraped?.areasConocimiento || []) as string[]

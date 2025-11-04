@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { ProfessorCard } from "../components/ProfessorCard"
-import Link from "next/link"
 import { useSemanticSearch } from "@/lib/hooks/useSemanticSearch"
 
 type Departamento = { id: string; nombre: string }
@@ -17,6 +16,8 @@ type ApiProfesor = {
   materias: string[]
   fotografia?: string | null
 }
+
+type CardProfesor = ApiProfesor & { relevanciaScore?: number }
 
 export default function DashboardPage() {
   const [query, setQuery] = useState("")
@@ -119,10 +120,10 @@ export default function DashboardPage() {
     }
   }, [query, semanticSearch, clearSemanticResults])
 
-  const filtered = useMemo(() => {
+  const filtered: CardProfesor[] = useMemo(() => {
     // Si hay query: usa resultados semánticos si existen; si no, búsqueda tradicional
     const q = query.trim().toLowerCase()
-    if (!q) return profesores
+    if (!q) return profesores as CardProfesor[]
 
     if (semanticResults.length > 0) {
       return semanticResults.map((result) => ({
@@ -132,14 +133,15 @@ export default function DashboardPage() {
         universidad: result.universidad,
         materias: result.materias || [],
         relevanciaScore: result.relevanciaScore,
-      }))
+        fotografia: undefined,
+      })) as CardProfesor[]
     }
 
-    return profesores.filter((p) =>
+    return (profesores.filter((p) =>
       [p.nombreCompleto, p.departamento, p.universidad, ...(p.materias || [])]
         .filter(Boolean)
         .some((f) => String(f).toLowerCase().includes(q))
-    )
+    ) as unknown) as CardProfesor[]
   }, [profesores, query, semanticResults])
 
   const handleApply = () => {

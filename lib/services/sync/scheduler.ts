@@ -3,22 +3,22 @@
  * Manages scheduled sync operations using cron
  */
 
-import cron from 'node-cron';
+import cron, { type ScheduledTask } from 'node-cron';
 import { SyncService } from './sync-service';
 import { supabaseAdmin } from '@/lib/supabase/admin-client';
 
-interface ScheduledTask {
+interface ScheduledJob {
 	configurationId: string;
 	configurationName: string;
 	cronExpression: string;
-	task: cron.ScheduledTask;
+	task: ScheduledTask;
 }
 
 /**
  * Manages scheduled sync operations
  */
 export class SyncScheduler {
-	private scheduledTasks: Map<string, ScheduledTask> = new Map();
+	private scheduledTasks: Map<string, ScheduledJob> = new Map();
 	private syncService = new SyncService();
 	private supabase = supabaseAdmin;
 	private isRunning = false;
@@ -51,7 +51,7 @@ export class SyncScheduler {
 		console.log('Stopping sync scheduler...');
 		
 		// Stop all scheduled tasks
-		for (const [configId, task] of this.scheduledTasks.entries()) {
+for (const [, task] of this.scheduledTasks.entries()) {
 			task.task.stop();
 			console.log(`Stopped scheduled task for: ${task.configurationName}`);
 		}
@@ -94,7 +94,7 @@ export class SyncScheduler {
 	/**
 	 * Schedule a configuration
 	 */
-	private async scheduleConfiguration(config: any) {
+private async scheduleConfiguration(config: { id: string; name: string; schedule_cron: string | null }) {
 		const { id, name, schedule_cron } = config;
 
 		// Validate cron expression
@@ -117,10 +117,6 @@ export class SyncScheduler {
 			schedule_cron,
 			async () => {
 				await this.executeScheduledSync(id, name);
-			},
-			{
-				scheduled: true,
-				timezone: 'America/Bogota', // Adjust to your timezone
 			},
 		);
 

@@ -1,5 +1,5 @@
 // File: `lib/services/scrapers/eafit-scraper.ts`
-import { parse } from 'node-html-parser';
+import { parse, type HTMLElement } from 'node-html-parser';
 
 export interface ScrapedProfessor {
     externalId: string;
@@ -133,12 +133,12 @@ export class EAFITScraper {
         return best.url;
     }
 
-    private collectImageCandidatesFromDom(root: any, name?: string): string[] {
+    private collectImageCandidatesFromDom(root: HTMLElement): string[] {
         const urls: string[] = [];
 
         // Meta tags
-        const og = root.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
-        const tw = root.querySelector('meta[name="twitter:image"]')?.getAttribute('content') || '';
+            const og = root.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
+            const tw = root.querySelector('meta[name="twitter:image"]')?.getAttribute('content') || '';
         if (og) urls.push(og);
         if (tw) urls.push(tw);
 
@@ -191,7 +191,7 @@ export class EAFITScraper {
             const looksLikeProfile = href.includes('/nuestros-profesores/');
             if (text.includes('ver perfil') && looksLikeProfile) {
                 let name = '';
-                let container: any = a.parentNode;
+                let container = a.parentNode as HTMLElement | null;
                 for (let i = 0; i < 5 && container; i++) {
                     const h = container.querySelector?.('h4, h3');
                     if (h && h.text?.trim()) {
@@ -204,11 +204,11 @@ export class EAFITScraper {
                     const fullUrl = href.startsWith('http') ? href : `${this.baseUrl}${href}`;
                     if (name.toLowerCase() !== 'lo más reciente') {
                         // intentar capturar imagen cercana y validarla
-                        let card: any = a.parentNode;
+                        let card = a.parentNode as HTMLElement | null;
                         let imageUrl: string | undefined;
                         const nearby: string[] = [];
                         for (let j = 0; j < 5 && card; j++) {
-                            const imgEl = card.querySelector?.('img');
+                            const imgEl = card.querySelector?.('img') as HTMLElement | undefined;
                             const src = imgEl?.getAttribute('src') || '';
                             if (src) nearby.push(src);
                             card = card.parentNode;
@@ -226,7 +226,7 @@ export class EAFITScraper {
             for (const h of headers) {
                 const name = h.text.trim();
                 let link: string | undefined;
-                let container: any = h.parentNode;
+                let container = h.parentNode as HTMLElement | null;
                 for (let i = 0; i < 5 && container && !link; i++) {
                     const a = container.querySelector?.('a');
                     if (a) {
@@ -238,10 +238,10 @@ export class EAFITScraper {
                 if (name && link && name.toLowerCase() !== 'lo más reciente') {
                     const fullUrl = link.startsWith('http') ? link : `${this.baseUrl}${link}`;
                     let imageUrl: string | undefined;
-                    let card: any = h.parentNode;
+                    let card = h.parentNode as HTMLElement | null;
                     const nearby: string[] = [];
                     for (let j = 0; j < 5 && card; j++) {
-                        const imgEl = card.querySelector?.('img');
+                        const imgEl = card.querySelector?.('img') as HTMLElement | undefined;
                         const src = imgEl?.getAttribute('src') || '';
                         if (src) nearby.push(src);
                         card = card.parentNode;
@@ -283,13 +283,13 @@ export class EAFITScraper {
     }
 
     // ---------- Bio ----------
-    private pickBioFromDom(root: any): string | undefined {
+    private pickBioFromDom(root: HTMLElement): string | undefined {
         const candidatesByHeading: string[] = [];
         const headings = root.querySelectorAll('h2, h3, h4, button, a, li');
         for (const h of headings) {
             const txt = (h.text || '').trim().toLowerCase();
             if (/(^|\s)(resumen|summary)(\s|$)/i.test(txt)) {
-                let cont: any = h.parentNode;
+                let cont = h.parentNode as HTMLElement | null;
                 for (let i = 0; i < 5 && cont; i++) {
                     const ps = cont.querySelectorAll?.('p') || [];
                     for (const p of ps) {
@@ -306,10 +306,10 @@ export class EAFITScraper {
         }
 
         const main = root.querySelector('main') || root;
-        const psAll = main.querySelectorAll('p');
+        const psAll = main.querySelectorAll('p') as HTMLElement[];
         const filtered = psAll
-            .map((p: any) => (p.text || '').trim())
-            .filter((t: string) => t && t.length >= 80);
+            .map((p) => (p.text || '').trim())
+            .filter((t) => t && t.length >= 80);
 
         const chosen = this.filterMarketingAndPick(filtered);
         return chosen;
@@ -364,7 +364,7 @@ export class EAFITScraper {
         const email = emailElement ? emailElement.getAttribute('href')?.replace('mailto:', '') : undefined;
 
         // Escuela/Departamento
-        const breadcrumbs = root.querySelectorAll('.breadcrumb li, nav a, nav li, header a');
+        const breadcrumbs = root.querySelectorAll('.breadcrumb li, nav a, nav li, header a') as HTMLElement[];
         let escuela: string | undefined;
         for (const crumb of breadcrumbs) {
             const text = (crumb.text || '').trim();
@@ -377,7 +377,7 @@ export class EAFITScraper {
         const areasConocimiento: string[] = [];
         const programas: string[] = [];
         const gruposInvestigacion: string[] = [];
-        const tags = root.querySelectorAll('.facet-item, .tag, .badge, .chip, .etiqueta, button, a');
+        const tags = root.querySelectorAll('.facet-item, .tag, .badge, .chip, .etiqueta, button, a') as HTMLElement[];
         for (const tag of tags) {
             const text = (tag.text || '').trim();
             if (!text) continue;
@@ -390,7 +390,7 @@ export class EAFITScraper {
         }
 
         // Imagen: coleccionar candidatos y puntuar
-        const candidates = this.collectImageCandidatesFromDom(root, nombreCompleto);
+        const candidates = this.collectImageCandidatesFromDom(root);
         if (fallbackImage) candidates.push(fallbackImage);
         const fotografia = this.pickBestImage(candidates, nombreCompleto);
 

@@ -40,6 +40,8 @@ export interface ProcessRecordResult {
 /**
  * Orchestrates data synchronization with the database
  */
+import type { PostgrestError } from '@supabase/supabase-js'
+
 export class SyncOrchestrator {
     private supabase = supabaseAdmin;
     private configurationId?: string;
@@ -137,7 +139,7 @@ export class SyncOrchestrator {
             }
         } catch (error) {
             result.status = 'failed';
-            (result.details as any).error = error instanceof Error ? error.message : 'Unknown error';
+            result.details.error = error instanceof Error ? error.message : 'Unknown error';
 
             await this.updateAuditLog(auditLogId, result, new Date());
             throw error;
@@ -233,7 +235,7 @@ export class SyncOrchestrator {
 
         if (error) {
             // Duplicado por external_id -> actualizar
-            if ((error as any).code === '23505') {
+            if ((error as PostgrestError).code === '23505') {
                 const { data: existing } = await this.supabase
                     .from('profesores')
                     .select('id, fotografia')
@@ -250,7 +252,7 @@ export class SyncOrchestrator {
                             departamento_id: departamentoId,
                             raw_scraped_data: professor.raw_scraped_data,
                             last_synced_at: new Date().toISOString(),
-                            fotografia: professor.fotografia ?? (existing as any).fotografia ?? null, // NUEVO
+                            fotografia: professor.fotografia ?? (existing as { fotografia?: string | null }).fotografia ?? null, // NUEVO
                         })
                         .eq('id', existing.id);
 
@@ -263,28 +265,36 @@ export class SyncOrchestrator {
                 }
             }
 
+            const pgErr = error as PostgrestError
             console.error('[SYNC][INSERT][ERROR]', {
                 external_id: professor.external_id,
                 message: error.message,
-                details: (error as any).details,
-                hint: (error as any).hint,
-                code: (error as any).code,
+                details: pgErr.details,
+                hint: pgErr.hint,
+                code: pgErr.code,
             });
 
             return {
                 action: 'failed',
-                error: `Insert error: ${error.message} ${(error as any).details || ''}`.trim(),
+                error: `Insert error: ${error.message} ${pgErr.details || ''}`.trim(),
             };
         }
 
-        return { action: 'created', profesorId: (data as any).id };
+        const created = data as { id: string }
+        return { action: 'created', profesorId: created.id };
     }
 
     /**
      * Update an existing professor record
      */
     private async updateProfessor(
-        existing: any,
+        existing: {
+            id: string
+            departamento_id?: string | null
+            sync_enabled?: boolean
+            manual_override_fields?: string[]
+            [key: string]: unknown
+        },
         professor: MappedProfessor,
         options: SyncOptions,
     ): Promise<ProcessRecordResult> {
@@ -351,18 +361,19 @@ export class SyncOrchestrator {
         const { error } = await this.supabase.from('profesores').update(updates).eq('id', existing.id);
 
         if (error) {
+            const pgErr = error as PostgrestError
             console.error('[SYNC][UPDATE][ERROR]', {
                 id: existing.id,
-                external_id: existing.external_id,
+                external_id: (existing as { external_id?: string }).external_id,
                 message: error.message,
-                details: (error as any).details,
-                hint: (error as any).hint,
-                code: (error as any).code,
+                details: pgErr.details,
+                hint: pgErr.hint,
+                code: pgErr.code,
             });
             return {
                 action: 'failed',
                 profesorId: existing.id,
-                error: `Update error: ${error.message} ${(error as any).details || ''}`.trim(),
+                error: `Update error: ${error.message} ${pgErr.details || ''}`.trim(),
             };
         }
 
@@ -377,13 +388,15 @@ export class SyncOrchestrator {
         universidadNombre: string,
     ): Promise<string | null> {
         // 1) Universidad
-        let { data: universidad, error: uniError } = await this.supabase
+        const uniRes = await this.supabase
             .from('universidades')
             .select('id')
             .ilike('nombre', universidadNombre)
             .maybeSingle();
+        let universidad = uniRes.data;
+        const uniError = uniRes.error;
 
-        if (uniError && (uniError as any).code !== 'PGRST116') {
+        if (uniError && (uniError as PostgrestError).code !== 'PGRST116') {
             console.error('Error finding universidad:', uniError);
             return null;
         }
@@ -403,14 +416,16 @@ export class SyncOrchestrator {
         }
 
         // 2) Departamento
-        let { data: departamento, error: deptError } = await this.supabase
+        const deptRes = await this.supabase
             .from('departamentos')
             .select('id')
             .eq('universidad_id', universidad!.id)
             .ilike('nombre', departmentName)
             .maybeSingle();
+        let departamento = deptRes.data;
+        const deptError = deptRes.error;
 
-        if (deptError && (deptError as any).code !== 'PGRST116') {
+        if (deptError && (deptError as PostgrestError).code !== 'PGRST116') {
             console.error('Error finding departamento:', deptError);
             return null;
         }
@@ -463,7 +478,7 @@ export class SyncOrchestrator {
             throw new Error(`Failed to create audit log: ${error?.message}`);
         }
 
-        return (data as any).id;
+        return (data as { id: string }).id;
     }
 
     /**

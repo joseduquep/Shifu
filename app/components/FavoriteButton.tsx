@@ -19,12 +19,12 @@ export function FavoriteButton({
   const [isFavorite, setIsFavorite] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user, role } = useAuth()
+  const { user, profile } = useAuth()
 
   // Cargar estado inicial del favorito
   useEffect(() => {
     // Solo cargar si el usuario es estudiante
-    if (!user || role !== 'student') return
+    if (!user || profile?.role !== 'student') return
     const loadFavoriteStatus = async () => {
       try {
         const response = await fetch(`/api/favoritos/${profesorId}`)
@@ -38,10 +38,10 @@ export function FavoriteButton({
     }
 
     loadFavoriteStatus()
-  }, [profesorId, user, role])
+  }, [profesorId, user, profile?.role])
 
   // Solo mostrar para estudiantes autenticados
-  if (!user || role !== 'student') {
+  if (!user || profile?.role !== 'student') {
     return null
   }
 

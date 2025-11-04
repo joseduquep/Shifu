@@ -46,7 +46,8 @@ export async function GET(req: NextRequest) {
         departamentoId,
         universidadId,
         materiaId,
-        semestreCodigo, // no usado (legacy), se mantiene para compat
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        semestreCodigo: _semestreCodigo, // no usado (legacy), se mantiene para compat
         limit,
         offset,
     } = parsed.data;
@@ -108,10 +109,13 @@ export async function GET(req: NextRequest) {
         }
     }
 
-    const rows: ProfesorRow[] = (data ?? []) as ProfesorRow[];
+    type RawScraped = { fotografia?: string | null; scrapedData?: { fotografia?: string | null } } | null
+    type RowWithRaw = ProfesorRow & { raw_scraped_data?: RawScraped }
+
+    const rows: RowWithRaw[] = (data ?? []) as RowWithRaw[];
     const out = rows.map((row) => {
-        const raw = (row as any).raw_scraped_data as any;
-        const fotoCol = (row as any).fotografia;
+        const raw = row.raw_scraped_data;
+        const fotoCol = row.fotografia ?? null;
         const fotoRaw = raw?.fotografia || raw?.scrapedData?.fotografia || null;
 
         return {
