@@ -26,6 +26,13 @@ function LoginPageContent() {
         setIsLoading(true)
         setError("")
         try {
+            // Bypass simple: admin@gmail.com / 12345 → consola admin
+            if (email.toLowerCase() === 'admin@gmail.com' && password === '12345') {
+                // Deja cookie de sesión leída por el middleware (protege /admin)
+                try { document.cookie = 'admin_bypass=1; Path=/; SameSite=Lax' } catch {}
+                router.replace('/admin')
+                return
+            }
             const signInPromise = supabase.auth.signInWithPassword({ email, password })
             const timeout = new Promise((_, rej) =>
                 setTimeout(() => rej(new Error('Tiempo de espera excedido. Intenta de nuevo.')), 15000)

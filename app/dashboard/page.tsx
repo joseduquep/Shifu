@@ -15,6 +15,7 @@ type ApiProfesor = {
   departamento: string
   universidad?: string
   materias: string[]
+  fotografia?: string | null
 }
 
 export default function DashboardPage() {
@@ -119,22 +120,26 @@ export default function DashboardPage() {
   }, [query, semanticSearch, clearSemanticResults])
 
   const filtered = useMemo(() => {
-    // Si hay query y búsqueda semántica está habilitada, usar resultados semánticos
-    if (query.trim()) {
-      if (semanticResults.length > 0) {
-        return semanticResults.map((result) => ({
-          id: result.id,
-          nombreCompleto: result.nombreCompleto,
-          departamento: result.departamento,
-          universidad: result.universidad,
-          materias: result.materias || [],
-          relevanciaScore: result.relevanciaScore,
-        }))
-      }
-      return []
+    // Si hay query: usa resultados semánticos si existen; si no, búsqueda tradicional
+    const q = query.trim().toLowerCase()
+    if (!q) return profesores
+
+    if (semanticResults.length > 0) {
+      return semanticResults.map((result) => ({
+        id: result.id,
+        nombreCompleto: result.nombreCompleto,
+        departamento: result.departamento,
+        universidad: result.universidad,
+        materias: result.materias || [],
+        relevanciaScore: result.relevanciaScore,
+      }))
     }
 
-    return profesores
+    return profesores.filter((p) =>
+      [p.nombreCompleto, p.departamento, p.universidad, ...(p.materias || [])]
+        .filter(Boolean)
+        .some((f) => String(f).toLowerCase().includes(q))
+    )
   }, [profesores, query, semanticResults])
 
   const handleApply = () => {
@@ -156,15 +161,7 @@ export default function DashboardPage() {
     <main className="min-h-dvh bg-[#0b0d12] text-primary font-sans">
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl md:text-3xl font-medium">
-            Directorio de profesores
-          </h1>
-          <Link
-            href="/favoritos"
-            className="inline-flex items-center rounded-full bg-primary text-[#0b0d12] px-4 py-2 text-sm font-medium hover:opacity-90 transition"
-          >
-            Mis favoritos
-          </Link>
+          <h1 className="text-2xl md:text-3xl font-medium">Dashboard</h1>
         </div>
 
         <div className="mt-6">
@@ -308,6 +305,7 @@ export default function DashboardPage() {
                 department={p.departamento}
                 university={p.universidad}
                 materias={p.materias}
+                photoUrl={p.fotografia}
               />
             </div>
           ))}

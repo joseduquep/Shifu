@@ -1,292 +1,281 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { headers } from "next/headers"
+// Estos componentes importados se asume que manejan su propio estilo y lógica.
 import { FavoriteButton } from "@/app/components/FavoriteButton"
 import { ShareProfileButton } from "@/app/components/ShareProfileButton"
 
 export default async function ProfessorProfile({
-  params,
-}: {
-  params: Promise<{ id: string }>
+                                                   params,
+                                               }: {
+    params: Promise<{ id: string }>
 }) {
-  const { id } = await params
-  const hdrs = await headers()
-  const envBase = process.env.NEXT_PUBLIC_BASE_URL
-  const proto = hdrs.get("x-forwarded-proto") || "http"
-  const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "localhost:3000"
-  const runtimeBase = `${proto}://${host}`
-  const baseUrl = envBase && /^https?:\/\//.test(envBase) ? envBase : runtimeBase
-  const res = await fetch(`${baseUrl}/api/profesores/${id}`, { cache: "no-store" })
-  if (!res.ok) return notFound()
-  const prof = await res.json()
+    // --- Lógica de Next.js (No modificada) ---
+    const { id } = await params
+    const hdrs = await headers()
+    const envBase = process.env.NEXT_PUBLIC_BASE_URL
+    const proto = hdrs.get("x-forwarded-proto") || "http"
+    const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "localhost:3000"
+    const runtimeBase = `${proto}://${host}`
+    const baseUrl = envBase && /^https?:\/\//.test(envBase) ? envBase : runtimeBase
+    const res = await fetch(`${baseUrl}/api/profesores/${id}`, { cache: "no-store" })
+    if (!res.ok) return notFound()
+    const prof = await res.json()
 
-  // Obtener resumen generado por IA
-  let resumenIA = null
-  try {
-    const resumenRes = await fetch(`${baseUrl}/api/profesores/${id}/resumen`, { cache: "no-store" })
-    if (resumenRes.ok) {
-      const resumenData = await resumenRes.json()
-      resumenIA = resumenData.resumen
+    // Obtener resumen generado por IA (Lógica no modificada)
+    let resumenIA = null
+    try {
+        const resumenRes = await fetch(`${baseUrl}/api/profesores/${id}/resumen`, { cache: "no-store" })
+        if (resumenRes.ok) {
+            const resumenData = await resumenRes.json()
+            resumenIA = resumenData.resumen
+        }
+    } catch (error) {
+        console.error('Error obteniendo resumen:', error)
     }
-  } catch (error) {
-    console.error('Error obteniendo resumen:', error)
-  }
+    // --- Fin Lógica de Next.js ---
 
-  return (
-    <main className="min-h-dvh bg-[#0b0d12] text-primary font-sans">
-      <section className="mx-auto max-w-5xl px-6 py-10">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/dashboard"
-            aria-label="Volver al dashboard"
-            className="inline-flex items-center justify-center p-2 rounded-full border border-white/10 bg-[#0b0d12] text-primary hover:opacity-90 transition"
-          >
-            <ArrowLeftIcon />
-          </Link>
-        </div>
 
-        <div className="mt-6 rounded-3xl border border-white/10 bg-[#121621] p-6 md:p-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="size-14 rounded-2xl bg-[#0b0d12] grid place-items-center border border-white/10 text-white/80 text-lg font-medium">
-                {prof.nombreCompleto
-                  .split(" ")
-                  .filter(Boolean)
-                  .slice(0, 2)
-                  .map((p: string) => p[0]?.toUpperCase())
-                  .join("")}
-              </div>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-medium text-white">
-                  {prof.nombreCompleto}
-                </h1>
-                <div className="mt-1 text-sm text-white/60">
-                  {prof.departamento} · {prof.universidad}
+    return (
+        <main className="min-h-dvh bg-[#0b0d12] text-white font-sans p-4 md:p-8">
+            <section className="mx-auto max-w-4xl">
+
+                {/* Botón de regreso minimalista y llamativo */}
+                <div className="mb-8">
+                    <Link
+                        href="/dashboard"
+                        aria-label="Volver al dashboard"
+                        className="inline-flex items-center gap-2 text-white/70 hover:text-white transition duration-300 group"
+                    >
+                        <ArrowLeftIcon className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
+                        <span className="text-sm font-medium tracking-wider">Volver</span>
+                    </Link>
                 </div>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-3">
-              <ShareProfileButton profesorId={id} nombreProfesor={prof.nombreCompleto} />
-              <FavoriteButton 
-                profesorId={id} 
-                size="md" 
-                variant="both"
-              />
-            </div>
-            </div>
+                {/* Contenedor principal del perfil (Minimalista con efecto 'flotante') */}
+                <div className="bg-[#121621] rounded-3xl p-6 md:p-10 shadow-2xl shadow-black/50 border border-white/5">
 
-            {/* Resumen generado por IA */}
-            {resumenIA && (
-              <div className="mt-6 p-4 rounded-2xl bg-primary/10 border border-primary/20">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                    <svg className="w-3 h-3 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-primary mb-1">Resumen Profesional</h3>
-                    <p className="text-white/90 text-sm leading-relaxed">{resumenIA}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+                    {/* 1. SECCIÓN DE ENCABEZADO Y ACCIONES */}
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 pb-6 border-b border-white/10 mb-8">
+                        <div className="flex items-start gap-5">
+                            {/* Avatar más grande y angular */}
+                            {prof.fotografia ? (
+                                <img
+                                    src={prof.fotografia}
+                                    alt={prof.nombreCompleto}
+                                    className="size-20 rounded-xl object-cover border-2 border-white/20 shadow-lg"
+                                />
+                            ) : (
+                                <div className="size-20 rounded-xl bg-[#0b0d12] grid place-items-center border border-white/10 text-white/80 text-2xl font-semibold flex-shrink-0">
+                                    {prof.nombreCompleto
+                                        .split(" ")
+                                        .filter(Boolean)
+                                        .slice(0, 2)
+                                        .map((p: string) => p[0]?.toUpperCase())
+                                        .join("")}
+                                </div>
+                            )}
 
-            {prof.bio && (
-              <p className="mt-6 text-white/80 leading-relaxed">{prof.bio}</p>
-            )}
+                            {/* Título y Subtítulo */}
+                            <div>
+                                <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-snug">
+                                    {prof.nombreCompleto}
+                                </h1>
+                                <div className="mt-1 text-base text-white/50 font-light">
+                                    <span className="font-medium text-white/70">{prof.departamento}</span> en {prof.universidad}
+                                </div>
+                            </div>
+                        </div>
 
-            {/* Información adicional */}
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="rounded-2xl border border-white/10 bg-[#121621] p-4">
-                <div className="text-xs uppercase tracking-widest text-white/60">Correo</div>
-                <div className="mt-1 text-white/80 break-words">{prof.email ?? 'No disponible'}</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-[#121621] p-4">
-                <div className="text-xs uppercase tracking-widest text-white/60">Miembro desde</div>
-                <div className="mt-1 text-white/80">{prof.miembroDesde ? new Date(prof.miembroDesde).toLocaleDateString() : 'No disponible'}</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-[#121621] p-4">
-                <div className="text-xs uppercase tracking-widest text-white/60">Departamento</div>
-                <div className="mt-1 text-white/80">{prof.departamento}</div>
-              </div>
-            </div>
-
-          {Array.isArray(prof.materias) && prof.materias.length ? (
-            <div className="mt-8">
-              <div className="text-xs uppercase tracking-widest text-white/60">
-                Materias activas
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {prof.materias.map((m: any) => (
-                  <span
-                    key={m.id ?? m}
-                    className="inline-flex items-center rounded-full border border-white/10 bg-[#0b0d12] px-2.5 py-1 text-xs text-white/70"
-                  >
-                    {typeof m === 'string' ? m : `${m.nombre}${m.codigo ? ` · ${m.codigo}` : ''}`}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Materias que imparte */}
-        {Array.isArray(prof.materias) && prof.materias.length > 0 && (
-          <div className="mt-8 rounded-2xl border border-white/10 bg-[#121621] p-6">
-            <div className="text-xs uppercase tracking-widest text-white/60">
-              Materias que imparte
-            </div>
-            <div className="mt-4 space-y-3">
-              {prof.materias.map((materia: any, index: number) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-[#0b0d12]">
-                  <div>
-                    <div className="text-white font-medium">{materia.nombre || materia}{materia.codigo ? ` · ${materia.codigo}` : ''}</div>
-                    <div className="text-xs text-white/60 mt-1">
-                      {materia.departamento ? `Departamento de ${materia.departamento}` : prof.departamento}
+                        {/* Botones de acción (Componentes externos) */}
+                        <div className="flex items-center gap-3 mt-4 md:mt-0">
+                            {/* Manteniendo la funcionalidad original de los componentes externos */}
+                            <ShareProfileButton profesorId={id} nombreProfesor={prof.nombreCompleto} />
+                            {/* Fix: Se eliminó el prop 'variant' para evitar el error TS2322 */}
+                            <FavoriteButton profesorId={id} size="md" />
+                        </div>
                     </div>
-                  </div>
-                  <div className="text-xs text-white/40">
-                    {materia.departamento || prof.departamento}
-                  </div>
+
+                    {/* 2. RESUMEN GENERADO POR IA (Efecto llamativo en tonos azules) */}
+                    {resumenIA && (
+                        <div className="mb-8 p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 shadow-lg shadow-blue-500/10 transition duration-300 hover:shadow-blue-500/20">
+                            <div className="flex items-start gap-4">
+                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                                    <ZapIcon className="w-4 h-4 text-blue-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm uppercase tracking-widest font-bold text-white/70 mb-2">Resumen Profesional (IA)</h3>
+                                    <p className="text-white/90 text-base leading-relaxed font-light">{resumenIA}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 3. BIOGRAFÍA */}
+                    {prof.bio && (
+                        <div className="mb-8 p-4 rounded-xl bg-white/5">
+                            <p className="text-white/80 leading-loose text-sm italic">{prof.bio}</p>
+                        </div>
+                    )}
+
+                    {/* 4. INFORMACIÓN CLAVE EN FORMATO GRID MODERNO */}
+                    <div className="mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {/* Card de Correo */}
+                        <div className="rounded-xl p-4 bg-white/5 border border-white/5 shadow-inner shadow-black/20">
+                            <div className="text-xs uppercase tracking-widest font-semibold text-white/60 mb-1">Correo Electrónico</div>
+                            <div className="text-white/90 font-medium break-words text-sm">{prof.email ?? 'No disponible'}</div>
+                        </div>
+                        {/* Card de Miembro Desde */}
+                        <div className="rounded-xl p-4 bg-white/5 border border-white/5 shadow-inner shadow-black/20">
+                            <div className="text-xs uppercase tracking-widest font-semibold text-white/60 mb-1">Miembro Desde</div>
+                            <div className="text-white/90 font-medium text-sm">{prof.miembroDesde ? new Date(prof.miembroDesde).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' }) : 'No disponible'}</div>
+                        </div>
+                        {/* Card de Departamento */}
+                        <div className="rounded-xl p-4 bg-white/5 border border-white/5 shadow-inner shadow-black/20">
+                            <div className="text-xs uppercase tracking-widest font-semibold text-white/60 mb-1">Departamento Principal</div>
+                            <div className="text-white/90 font-medium text-sm">{prof.departamento}</div>
+                        </div>
+                    </div>
+
+                    {/* 5. SECCIONES DE TAGS Y LISTAS (Materias, Áreas, Programas, Grupos) */}
+                    <div className="space-y-6">
+
+                        {/* Materias activas (Tags) */}
+                        {Array.isArray(prof.materias) && prof.materias.length > 0 && (
+                            <div>
+                                {/* Detalle en azul */}
+                                <div className="text-xs uppercase tracking-widest font-bold text-white/60 mb-3 border-l-4 border-blue-500 pl-2">
+                                    Materias Activas
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {prof.materias.map((m: any) => (
+                                        <span
+                                            key={m.id ?? m}
+                                            className="inline-flex items-center rounded-full bg-[#0b0d12] px-3 py-1 text-xs text-white/70 font-medium border border-white/10 hover:bg-white/10 transition"
+                                        >
+                      {typeof m === 'string' ? m : `${m.nombre}${m.codigo ? ` - ${m.codigo}` : ''}`}
+                    </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Áreas de conocimiento */}
+                        {Array.isArray(prof.areasConocimiento) && prof.areasConocimiento.length > 0 && (
+                            <div>
+                                {/* Detalle en azul */}
+                                <div className="text-xs uppercase tracking-widest font-bold text-white/60 mb-3 border-l-4 border-blue-500 pl-2">Áreas de Conocimiento</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {prof.areasConocimiento.map((t: string, i: number) => (
+                                        <span key={i} className="inline-flex items-center rounded-full bg-[#0b0d12] px-3 py-1 text-xs text-white/70 font-light border border-white/10">
+                      {t}
+                    </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Programas y Grupos de investigación en una fila */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Programas */}
+                            {Array.isArray(prof.programas) && prof.programas.length > 0 && (
+                                <div>
+                                    {/* Detalle en azul */}
+                                    <div className="text-xs uppercase tracking-widest font-bold text-white/60 mb-3 border-l-4 border-blue-500 pl-2">Programas</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {prof.programas.map((t: string, i: number) => (
+                                            <span key={i} className="inline-flex items-center rounded-full bg-[#0b0d12] px-3 py-1 text-xs text-white/70 font-light border border-white/10">
+                                    {t}
+                                </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {/* Grupos de investigación */}
+                            {Array.isArray(prof.gruposInvestigacion) && prof.gruposInvestigacion.length > 0 && (
+                                <div>
+                                    {/* Detalle en azul */}
+                                    <div className="text-xs uppercase tracking-widest font-bold text-white/60 mb-3 border-l-4 border-blue-500 pl-2">Grupos de Investigación</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {prof.gruposInvestigacion.map((t: string, i: number) => (
+                                            <span key={i} className="inline-flex items-center rounded-full bg-[#0b0d12] px-3 py-1 text-xs text-white/70 font-light border border-white/10">
+                                    {t}
+                                </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                    </div>
+
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-    </main>
-  )
+
+                {/* 6. LISTA DETALLADA DE MATERIAS QUE IMPARTE */}
+                {Array.isArray(prof.materias) && prof.materias.length > 0 && (
+                    <div className="mt-8 rounded-3xl p-6 border border-white/10 bg-[#121621] shadow-xl shadow-black/50">
+                        <h2 className="text-lg uppercase tracking-widest font-bold text-white/60 mb-4">Detalle de Cursos</h2>
+                        <div className="space-y-3">
+                            {prof.materias.map((materia: any, index: number) => (
+                                <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-white/5 bg-[#0b0d12] transition duration-200 hover:bg-white/5">
+                                    <div>
+                                        <div className="text-white font-semibold text-base">{materia.nombre || materia}</div>
+                                        <div className="text-sm text-white/50 mt-1">
+                                            Código: {materia.codigo || 'N/A'}
+                                            <span className="mx-2 text-white/30">•</span>
+                                            Departamento: {materia.departamento || prof.departamento}
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-white/40 font-mono mt-2 sm:mt-0 sm:text-right">
+                                        {materia.codigo || (typeof materia === 'string' ? 'N/A' : prof.departamento.substring(0, 3).toUpperCase())}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </section>
+        </main>
+    )
 }
 
-function ArrowLeftIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <polyline points="11 18 6 12 11 6"></polyline>
-      <line x1="18" y1="12" x2="6" y2="12"></line>
-    </svg>
-  )
+// --- Componentes de Ícono (Helper Functions) ---
+
+// Icono para el resumen de IA
+// Fix: Tipificación explícita de props para evitar TS7006
+function ZapIcon(props: { className?: string }) {
+    return (
+        <svg
+            {...props}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+    )
 }
 
-// Eliminado: StarIcon ya no es necesario sin calificaciones
-function StarIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden
-    >
-      <path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.786 1.402 8.169L12 18.896l-7.336 3.87 1.402-8.169L.132 9.211l8.2-1.193L12 .587z" />
-    </svg>
-  )
+// Icono para el botón de regreso
+// Fix: Tipificación explícita de props para evitar TS7006
+function ArrowLeftIcon(props: { className?: string }) {
+    return (
+        <svg
+            {...props}
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+        >
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    )
 }
-
-type Point = { semester: string; rating: number }
-
-function RatingChart({ data }: { data: readonly Point[] }) {
-  const width = 480
-  const height = 160
-  const padding = 24
-
-  const xs = data.map((_, i) => padding + (i * (width - padding * 2)) / Math.max(1, data.length - 1))
-
-  // Escala fija 1..5 como eje principal
-  const yMin = 1
-  const yMax = 5
-  const y = (r: number) => padding + (height - padding * 2) * (1 - (r - yMin) / (yMax - yMin))
-
-  const dPath = xs
-    .map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y(data[i].rating).toFixed(1)}`)
-    .join(" ")
-
-  return (
-    <div className="w-full">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full h-40 text-white/15"
-        role="img"
-        aria-label="Evolución de calificación por semestre"
-      >
-        <rect x="0" y="0" width={width} height={height} fill="none" />
-
-        {/* Grid y ticks del eje Y (1 a 5) */}
-        {[1, 2, 3, 4, 5].map((val) => {
-          const gy = y(val)
-          return (
-            <g key={`y-${val}`}>
-              <line
-                x1={padding}
-                y1={gy}
-                x2={width - padding}
-                y2={gy}
-                stroke="currentColor"
-                className="text-white/10"
-                strokeDasharray="2 3"
-              />
-              <text x={padding - 8} y={gy + 3} textAnchor="end" fontSize="10" fill="#9aa3b2">
-                {val}
-              </text>
-            </g>
-          )
-        })}
-
-        {/* Ejes */}
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="currentColor" />
-        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="currentColor" />
-
-        {/* Línea principal */}
-        <path d={dPath} fill="none" stroke="currentColor" className="text-primary" strokeWidth="2" />
-
-        {/* Puntos con tooltip (burbuja) */}
-        {xs.map((x, i) => {
-          const yy = y(data[i].rating)
-          return (
-            <g key={i} className="group">
-              <circle
-                cx={x}
-                cy={yy}
-                r={3}
-                className="fill-[#b9d9ff] stroke-[#0b0d12]"
-                strokeWidth="1"
-              />
-              {/* Tooltip */}
-              <g
-                transform={`translate(${x}, ${yy - 18})`}
-                className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
-              >
-                <rect x={-22} y={-16} width={44} height={18} rx={6} fill="#0b0d12" stroke="rgba(255,255,255,0.15)" />
-                <text x={0} y={-4} textAnchor="middle" fontSize="10" fill="#b9d9ff">
-                  {data[i].rating.toFixed(1)}
-                </text>
-                <polygon points="0,0 -4,6 4,6" fill="#0b0d12" stroke="rgba(255,255,255,0.15)" />
-              </g>
-            </g>
-          )
-        })}
-
-        {/* Labels de semestre (eje X) */}
-        {xs.map((x, i) => (
-          <text key={`t-${i}`} x={x} y={height - padding + 14} textAnchor="middle" fontSize="10" fill="#9aa3b2">
-            {data[i].semester}
-          </text>
-        ))}
-      </svg>
-    </div>
-  )
-}
-

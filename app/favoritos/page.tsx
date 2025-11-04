@@ -24,7 +24,7 @@ export default function FavoritosPage() {
       try {
         setIsLoading(true)
         setError(null)
-        
+
         const response = await fetch('/api/favoritos')
         if (response.ok) {
           const data = await response.json()
@@ -143,9 +143,9 @@ export default function FavoritosPage() {
                   >
                     Ver perfil
                   </Link>
-                  <FavoriteButtonSimple 
-                    profesorId={favorito.profesor_id} 
-                    size="sm" 
+                  <FavoriteButtonSimple
+                    profesorId={favorito.profesor_id}
+                    size="sm"
                     variant="icon"
                     onToggle={(isFavorite) => handleFavoriteToggle(favorito.profesor_id, isFavorite)}
                   />
