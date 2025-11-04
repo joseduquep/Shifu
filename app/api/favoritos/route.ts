@@ -108,16 +108,22 @@ export async function GET() {
     }
 
     // Transformar datos al formato esperado
-    const favoritos = favoritosData?.map(fav => ({
-      id: fav.id,
-      profesor_id: fav.profesor_id,
-      nombre_completo: fav.profesores[0].nombre_completo,
-      departamento: fav.profesores[0].departamentos[0].nombre,
-      universidad: fav.profesores[0].departamentos[0].universidades[0].nombre,
-      calificacion_promedio: 0, // Por ahora 0
-      cantidad_resenas: 0, // Por ahora 0
-      created_at: fav.created_at
-    })) || []
+    const favoritos = (favoritosData ?? []).map(fav => {
+      const profesor = (fav as any)?.profesores
+      const departamento = profesor?.departamentos
+      const universidad = departamento?.universidades
+
+      return {
+        id: fav.id,
+        profesor_id: fav.profesor_id,
+        nombre_completo: profesor?.nombre_completo ?? '',
+        departamento: departamento?.nombre ?? '',
+        universidad: universidad?.nombre ?? '',
+        calificacion_promedio: 0, // Por ahora 0
+        cantidad_resenas: 0, // Por ahora 0
+        created_at: fav.created_at,
+      }
+    })
 
     return NextResponse.json({ favoritos })
   } catch (error) {
